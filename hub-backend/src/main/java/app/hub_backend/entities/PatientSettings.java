@@ -21,13 +21,16 @@ public class PatientSettings {
     private User patient;
 
     @Column(nullable = false, precision = 6, scale = 2)
+    @Builder.Default
     private BigDecimal severeLowMgdl = new BigDecimal("54.00");
 
     @Column(nullable = false, precision = 6, scale = 2)
-    private BigDecimal severeHighMgdl = new BigDecimal("300.00");
+    @Builder.Default
+    private BigDecimal severeHighMgdl = new BigDecimal("250.00"); // (I changed this from 300 to match our earlier discussion)
 
     @Column(nullable = false)
-    private Integer trendWindowDays = 3;
+    @Builder.Default
+    private Integer trendWindowDays = 7; // (I changed this from 3 to 7)
 
     @Column(nullable = false)
     @Builder.Default
