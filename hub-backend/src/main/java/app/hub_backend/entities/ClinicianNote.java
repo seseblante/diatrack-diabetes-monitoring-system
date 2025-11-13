@@ -1,37 +1,32 @@
 package app.hub_backend.entities;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "patient_profiles")
+@Table(name = "clinician_notes")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class PatientProfile {
+public class ClinicianNote {
 
     @Id
-    private UUID userId; // 1:1 to users.id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @OneToOne
-    @MapsId
-    @JoinColumn(name = "user_id")
-    private User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_clinician_link_id", nullable = false)
+    private PatientClinician patientClinicianLink;
 
-    private LocalDate dob;
+    @Column
+    private String noteContent;
 
-    @Column(length = 1)
-    private String sex; // 'F','M','X'
-
-    @Column(nullable = false)
-    private String timezone = "Asia/Manila";
-
+    @Builder.Default
     @Column(nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Builder.Default
     @Column(nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 }

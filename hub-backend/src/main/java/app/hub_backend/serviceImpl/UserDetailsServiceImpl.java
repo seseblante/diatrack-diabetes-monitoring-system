@@ -22,10 +22,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User u = users.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        if (!Boolean.TRUE.equals(u.getIsActive())) {
+        if (!u.isActive()) {
             throw new UsernameNotFoundException("User inactive");
         }
-        List<GrantedAuthority> auth = List.of(new SimpleGrantedAuthority("ROLE_" + u.getRole().name()));
+        // --- THIS IS THE CHANGE ---
+        List<GrantedAuthority> auth = List.of(new SimpleGrantedAuthority("ROLE_" + u.getRole()));
+        // --- END OF CHANGE ---
         return new org.springframework.security.core.userdetails.User(
                 u.getEmail(),
                 u.getPasswordHash() == null ? "" : u.getPasswordHash(),

@@ -1,6 +1,6 @@
 package app.hub_backend.mapper;
 
-import app.hub_backend.DTO.UserDto;
+import app.hub_backend.DTO.auth.UserDto;
 import app.hub_backend.entities.User;
 
 public class UserMapper {
@@ -11,7 +11,7 @@ public class UserMapper {
                 u.getFullName(),
                 u.getPhone(),
                 u.getRole(),
-                Boolean.TRUE.equals(u.getIsActive())
+                u.isActive()
         );
     }
 }

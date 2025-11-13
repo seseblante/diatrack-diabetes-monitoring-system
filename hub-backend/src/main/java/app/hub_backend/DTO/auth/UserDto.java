@@ -1,6 +1,4 @@
-package app.hub_backend.DTO;
-
-import app.hub_backend.entities.Role;
+package app.hub_backend.DTO.auth;
 
 import java.util.UUID;
 
@@ -9,6 +7,6 @@ public record UserDto(
         String email,
         String fullName,
         String phone,
-        Role role,
+        String role,
         boolean isActive
 ) {}

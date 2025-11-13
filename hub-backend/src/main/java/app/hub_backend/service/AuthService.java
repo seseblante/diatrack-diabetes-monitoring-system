@@ -1,15 +1,13 @@
 package app.hub_backend.service;
 
-import app.hub_backend.DTO.LoginRequest;
-import app.hub_backend.DTO.LoginResponse;
-import app.hub_backend.DTO.RegisterRequest;
+import app.hub_backend.DTO.auth.LoginRequestDto;
+import app.hub_backend.DTO.auth.LoginResponseDto;
+import app.hub_backend.DTO.auth.RegisterRequestDto;
 import app.hub_backend.entities.User;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
+// [MODIFIED] Simplified interface
 public interface AuthService {
-    LoginResponse login(LoginRequest req, HttpServletRequest httpReq, HttpServletResponse httpRes);
-    void logout(HttpServletRequest httpReq);
+    LoginResponseDto login(LoginRequestDto req);
     User currentUser();
-    User register(RegisterRequest req);
+    User register(RegisterRequestDto req);
 }
