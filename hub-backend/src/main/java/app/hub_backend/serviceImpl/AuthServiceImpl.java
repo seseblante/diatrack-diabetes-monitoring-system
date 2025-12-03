@@ -4,8 +4,10 @@ import app.hub_backend.DTO.auth.LoginRequestDto;
 import app.hub_backend.DTO.auth.LoginResponseDto;
 import app.hub_backend.DTO.auth.RegisterRequestDto;
 import app.hub_backend.entities.User;
+import app.hub_backend.entities.UserProfile;
 import app.hub_backend.mapper.UserMapper;
 import app.hub_backend.repositories.UserRepository;
+import app.hub_backend.repositories.UserProfileRepository;
 import app.hub_backend.service.AuthService;
 import app.hub_backend.service.JwtService;
 import app.hub_backend.service.PatientTargetRangeService;
@@ -29,12 +31,11 @@ import java.time.OffsetDateTime;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository users;
+    private final UserProfileRepository userProfiles;
     private final PasswordEncoder encoder;
-
-    // --- [NEW] ---
-    private final JwtService jwtService;
+    private final JwtService jwt;
+    private final PatientTargetRangeService patientTargetRangeService;
     private final AuthenticationManager authenticationManager;
-    private final PatientTargetRangeService patientTargetRangeService; // <-- [NEW] INJECT
 //    private final UserMapper userMapper; // Assuming you have a UserMapper
 
     @Override
@@ -58,9 +59,9 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found after login"));
 
         // 3. Generate the token and response
-        String jwtToken = jwtService.generateToken(user);
+        String token = jwt.generateToken(user);
 
-        return new LoginResponseDto(UserMapper.toDto(user), jwtToken);
+        return new LoginResponseDto(UserMapper.toDto(user), token);
     }
 
     @Override
@@ -100,14 +101,22 @@ public class AuthServiceImpl implements AuthService {
                 .updatedAt(OffsetDateTime.now())
                 .build();
 
-        User savedUser = users.save(u); // <-- Save the user first
+        User savedUser = users.save(u); // Save the user first
 
-        // --- [NEW] ---
-        // This is the compromise: create the defaults automatically
+        // Create a fresh UserProfile for this new user.
+        // Do NOT set the id manually; @MapsId will copy it from the User,
+        // which ensures Hibernate treats this as a new row instead of a stale/merged one.
+        UserProfile profile = new UserProfile();
+        profile.setUser(savedUser);
+        profile.setDob(req.dob());
+        profile.setSex(req.sex());
+        // timezone / createdAt / updatedAt default values come from the entity
+        userProfiles.save(profile);
+
+        // Create default targets for patients
         if ("PATIENT".equals(savedUser.getRole())) {
             patientTargetRangeService.createDefaultTargetsForNewPatient(savedUser);
         }
-        // --- [END NEW] ---
 
         return savedUser;
     }

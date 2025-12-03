@@ -1,4 +1,4 @@
-import { get, post } from './client';
+import { get, post, put } from './client';
 
 export interface MedicationRegimen {
   id: string;
@@ -11,6 +11,15 @@ export interface MedicationRegimen {
   timesOfDay: string[]; // Array of time strings
   isActive: boolean;
   instructions?: string;
+}
+
+export interface MedicationRegimenRequest {
+  medicationName: string;
+  doseAmount: number;
+  doseUnit: string;
+  frequencyType: string;
+  frequencyValue: number;
+  timesOfDay: string[];
 }
 
 export interface MedicationLog {
@@ -50,4 +59,25 @@ export async function logMedicationTaken(patientId: string, request: MedicationL
  */
 export async function getMedicationLogs(patientId: string): Promise<MedicationLog[]> {
   return await get<MedicationLog[]>(`/api/patients/${patientId}/medications/logs`);
+}
+
+/**
+ * Create a new medication regimen for a patient
+ * @param patientId Patient UUID
+ * @param request Medication regimen data
+ * @returns The created medication regimen
+ */
+export async function createMedicationRegimen(patientId: string, request: MedicationRegimenRequest): Promise<MedicationRegimen> {
+  return await post<MedicationRegimen>(`/api/patients/${patientId}/medications/regimens`, request);
+}
+
+/**
+ * Update an existing medication regimen
+ * @param patientId Patient UUID
+ * @param regimenId Regimen UUID
+ * @param request Updated medication regimen data
+ * @returns The updated medication regimen
+ */
+export async function updateMedicationRegimen(patientId: string, regimenId: string, request: MedicationRegimenRequest): Promise<MedicationRegimen> {
+  return await put<MedicationRegimen>(`/api/patients/${patientId}/medications/regimens/${regimenId}`, request);
 }

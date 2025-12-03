@@ -66,3 +66,13 @@ export async function updateClinicianNote(noteId: string, request: ClinicianNote
 export async function deleteClinicianNote(noteId: string): Promise<void> {
   return await del(`/api/notes/${noteId}`);
 }
+
+/**
+ * Create a link between a patient and clinician
+ * @param patientId Patient UUID
+ * @param clinicianId Clinician UUID
+ * @returns Created patient-clinician link
+ */
+export async function createPatientClinicianLink(patientId: string, clinicianId: string): Promise<PatientClinicianLink> {
+  return await post<PatientClinicianLink>('/api/links/patient-clinician', { patientId, clinicianId });
+}

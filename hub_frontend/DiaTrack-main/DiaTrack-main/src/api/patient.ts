@@ -64,3 +64,12 @@ export async function getPatientProfile(patientId: string): Promise<PatientDetai
 export async function updatePatientProfile(patientId: string, updates: PatientUpdateRequest): Promise<PatientDetail> {
   return await put<PatientDetail>(`/api/patients/${patientId}`, updates);
 }
+
+/**
+ * Search for patients by email or name
+ * @param query Search query string
+ * @returns List of matching patients
+ */
+export async function searchPatients(query: string): Promise<PatientDetail[]> {
+  return await get<PatientDetail[]>(`/api/users/search?query=${encodeURIComponent(query)}`);
+}

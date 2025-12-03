@@ -17,10 +17,13 @@ public class WebCorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(allowedOrigins);
+        // For local development, allow all origins so that frontend ports like 5173/3000
+        // can call the API without CORS 403 issues.
+        cfg.setAllowedOriginPatterns(List.of("*"));
         cfg.setAllowCredentials(true);
         cfg.addAllowedHeader(CorsConfiguration.ALL);
         cfg.addAllowedMethod(CorsConfiguration.ALL);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;

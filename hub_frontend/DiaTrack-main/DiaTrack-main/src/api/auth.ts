@@ -1,5 +1,8 @@
 import { post } from './client';
 
+// Base URL for auth-related calls that should not send existing auth headers
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8080';
+
 export interface User {
   id: string;
   fullName: string;
@@ -39,8 +42,24 @@ export async function register(userData: {
   phone: string;
   role: string;
   isConsentGiven: boolean;
+  dob?: string | null;
+  sex?: string | null;
 }): Promise<User> {
-  return await post<User>('/api/auth/register', userData);
+  const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(userData),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Request failed with status ${res.status}`);
+  }
+
+  return res.json() as Promise<User>;
 }
 
 /**

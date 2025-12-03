@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { ArrowLeft, UserPlus, Stethoscope, User as UserIcon } from 'lucide-react';
 import logoImage from '../assets/logoImage.png';
+import { register as apiRegister } from '../api/auth';
 
 interface RegistrationProps {
   onBack: () => void;
@@ -19,8 +20,8 @@ export function Registration({ onBack }: RegistrationProps) {
     confirmPassword: '',
     fullName: '',
     phone: '',
-    dob: '',
-    sex: 'M'
+    dateOfBirth: '',
+    sex: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,8 +31,8 @@ export function Registration({ onBack }: RegistrationProps) {
     setError('');
 
     // Validation
-    if (!formData.email || !formData.password || !formData.fullName) {
-      setError('Please fill in all required fields');
+    if (!formData.email || !formData.password || !formData.fullName || !formData.dateOfBirth) {
+      setError('Please fill in all required fields, including date of birth');
       return;
     }
 
@@ -48,27 +49,25 @@ export function Registration({ onBack }: RegistrationProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          fullName: formData.fullName,
-          phone: formData.phone,
-          role: role
-        }),
+      await apiRegister({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        phone: formData.phone,
+        role: role || 'PATIENT',
+        isConsentGiven: true,
+        dob: formData.dateOfBirth || null,
+        sex: formData.sex || null,
       });
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || 'Registration failed');
-      }
-
       // Success - show message and redirect to login
-      alert(`Registration successful! ${role === 'CLINICIAN' ? 'Please wait for admin approval before logging in.' : 'You can now log in.'}`);
+      alert(
+        `Registration successful! ${
+          role === 'CLINICIAN'
+            ? 'Please wait for admin approval before logging in.'
+            : 'You can now log in.'
+        }`
+      );
       onBack();
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -79,7 +78,7 @@ export function Registration({ onBack }: RegistrationProps) {
 
   if (!role) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col items-center justify-center p-4">
+      <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col items-center justify-center p-4 overflow-y-auto">
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-8">
@@ -139,7 +138,7 @@ export function Registration({ onBack }: RegistrationProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col items-center justify-center p-4">
+    <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -192,6 +191,35 @@ export function Registration({ onBack }: RegistrationProps) {
                   required
                   className="h-12"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date of Birth *
+                </label>
+                <Input
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  required
+                  className="h-12"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sex (Optional)
+                </label>
+                <select
+                  value={formData.sex}
+                  onChange={(e) => setFormData({ ...formData, sex: e.target.value })}
+                  className="w-full h-12 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select sex</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                  <option value="X">Prefer not to say / Other</option>
+                </select>
               </div>
 
               <div>

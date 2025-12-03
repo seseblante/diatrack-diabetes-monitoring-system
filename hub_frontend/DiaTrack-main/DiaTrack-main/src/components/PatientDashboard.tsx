@@ -82,49 +82,57 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   // Get current user
   const currentUser = getCurrentUser();
 
-  // Fetch data from backend on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentUser?.id) return;
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // First fetch clinician links to get the link ID for messages
-        const clinicianLinksData = await getPatientClinicians(currentUser.id);
-        setClinicianLinks(clinicianLinksData);
-        
-        // Then fetch other data in parallel
-        const [glucoseData, mealsData, regimensData, logsData, symptomsData] = await Promise.all([
-          getGlucoseReadings(currentUser.id),
-          getMealLogs(currentUser.id),
-          getMedicationRegimens(currentUser.id),
-          getMedicationLogs(currentUser.id),
-          getSymptomLogs(currentUser.id)
-        ]);
-        
-        setGlucoseReadings(glucoseData);
-        setMeals(mealsData);
-        setMedicationRegimens(regimensData);
-        setMedicationLogs(logsData);
-        setSymptomNotes(symptomsData);
-        
-        // Fetch messages if there are clinician links
-        if (clinicianLinksData.length > 0) {
-          const messagesData = await getMessages(clinicianLinksData[0].id);
-          setMessages(messagesData);
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to load data');
-        console.error('Error fetching data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Fetch data from backend
+  const fetchData = async () => {
+    if (!currentUser?.id) return;
     
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // First fetch clinician links to get the link ID for messages
+      const clinicianLinksData = await getPatientClinicians(currentUser.id);
+      setClinicianLinks(clinicianLinksData);
+      
+      // Then fetch other data in parallel
+      const [glucoseData, mealsData, regimensData, logsData, symptomsData] = await Promise.all([
+        getGlucoseReadings(currentUser.id),
+        getMealLogs(currentUser.id),
+        getMedicationRegimens(currentUser.id),
+        getMedicationLogs(currentUser.id),
+        getSymptomLogs(currentUser.id)
+      ]);
+      
+      setGlucoseReadings(glucoseData);
+      setMeals(mealsData);
+      setMedicationRegimens(regimensData);
+      setMedicationLogs(logsData);
+      setSymptomNotes(symptomsData);
+      
+      // Fetch messages if there are clinician links
+      if (clinicianLinksData.length > 0) {
+        const messagesData = await getMessages(clinicianLinksData[0].id);
+        setMessages(messagesData);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load data');
+      console.error('Error fetching data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data on mount
+  useEffect(() => {
     fetchData();
   }, [currentUser?.id]);
+
+  // Refetch data when tab changes
+  useEffect(() => {
+    if (activeTab !== 'menu') {
+      fetchData();
+    }
+  }, [activeTab]);
 
   // Get current date and time
   const getCurrentDate = () => {
@@ -354,13 +362,13 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
         context: glucoseContext
       });
       
-      // Add to local state
-      setGlucoseReadings(prev => [...prev, newReading]);
-      
       // Reset form
       setGlucoseValue('');
       setGlucoseContext('Fasting');
       setQuickLogType(null);
+      
+      // Refetch data to get updated list
+      await fetchData();
     } catch (err: any) {
       setError(err.message || 'Failed to save glucose reading');
       console.error('Error saving glucose:', err);
@@ -380,14 +388,14 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
         carbsG: carbsValue ? parseFloat(carbsValue) : undefined
       });
       
-      // Add to local state
-      setMeals(prev => [...prev, newMeal]);
-      
       // Reset form
       setMealDescription('');
       setCarbsValue('');
       setMealTime('');
       setQuickLogType(null);
+      
+      // Refetch data to get updated list
+      await fetchData();
     } catch (err: any) {
       setError(err.message || 'Failed to save meal');
       console.error('Error saving meal:', err);
@@ -401,13 +409,13 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     
     setIsLoading(true);
     try {
-      const newLog = await logMedicationTaken(currentUser.id, {
+      await logMedicationTaken(currentUser.id, {
         regimenId,
         takenAt: new Date().toISOString()
       });
       
-      // Add to local state
-      setMedicationLogs(prev => [...prev, newLog]);
+      // Refetch data to get updated list
+      await fetchData();
     } catch (err: any) {
       setError(err.message || 'Failed to log medication');
       console.error('Error logging medication:', err);

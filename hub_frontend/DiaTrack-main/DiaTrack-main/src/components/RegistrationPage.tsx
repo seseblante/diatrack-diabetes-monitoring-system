@@ -28,6 +28,7 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
     dateOfBirth: '',
     phone: '',
     accountType: '',
+    sex: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -95,6 +96,8 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
       phone: formData.phone,
       role: formData.accountType === 'patient' ? 'PATIENT' : 'CLINICIAN',
       isConsentGiven: true,
+      dob: formData.dateOfBirth || null,
+      sex: formData.sex || null,
 };
 
     await register(payload);
@@ -108,9 +111,9 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
 
   if (step === 'consent') {
     return (
-      <div className="h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col pt-11">
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col">
         {/* Header */}
-        <div className="bg-white shadow-sm px-6 py-4 flex items-center space-x-4">
+        <div className="bg-white shadow-sm px-6 py-4 flex items-center space-x-4 flex-shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -124,7 +127,7 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
           </div>
         </div>
 
-        <div className="flex-1 px-6 py-6 overflow-y-auto">
+        <div className="flex-1 px-6 py-6 overflow-y-auto min-h-0">
           <Card className="border-0 shadow-xl bg-white">
             <CardHeader>
               <CardTitle className="text-lg">Terms and Consent</CardTitle>
@@ -253,9 +256,9 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
   }
 
   return (
-    <div className="h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col overflow-y-auto pt-11">
+    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col">
       {/* Header */}
-      <div className="bg-white shadow-sm px-6 py-4 flex items-center space-x-4">
+      <div className="bg-white shadow-sm px-6 py-4 flex items-center space-x-4 flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"
@@ -269,7 +272,7 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
         </div>
       </div>
 
-      <div className="flex-1 px-6 py-6 overflow-y-auto">
+      <div className="flex-1 px-6 py-6 overflow-y-auto min-h-0">
         <div className="space-y-6 pb-8">
           {/* App Logo */}
           <div className="text-center">
@@ -328,6 +331,24 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
                 {errors.dateOfBirth && (
                   <p className="text-sm text-red-500">{errors.dateOfBirth}</p>
                 )}
+              </div>
+
+              {/* Sex */}
+              <div className="space-y-2">
+                <Label htmlFor="sex">Sex (Optional)</Label>
+                <Select
+                  value={formData.sex}
+                  onValueChange={(value) => setFormData({ ...formData, sex: value })}
+                >
+                  <SelectTrigger className="h-14 text-lg bg-white border-gray-200 rounded-xl">
+                    <SelectValue placeholder="Select sex" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M">Male</SelectItem>
+                    <SelectItem value="F">Female</SelectItem>
+                    <SelectItem value="X">Prefer not to say / Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Phone */}

@@ -8,10 +8,13 @@ import { ClinicianMessaging } from './ClinicianMessaging';
 import { ClinicianClinicSchedule } from './ClinicianClinicSchedule';
 import { ClinicSettings } from './ClinicSettings';
 import { ClinicianAppointments } from './ClinicianAppointments';
+import { ClinicianMedicationManagement } from './ClinicianMedicationManagement';
+import { PatientLinkManagement } from './PatientLinkManagement';
 import { getCurrentUser } from '../api/auth';
 import { getClinicianPatients, getClinicianNotes, createClinicianNote, type PatientClinicianLink, type ClinicianNote } from '../api/clinician';
 import { getGlucoseReadings, type GlucoseReading } from '../api/glucose';
 import { getAlerts, type Alert } from '../api/alerts';
+import { getSymptomLogs, type SymptomNote } from '../api/symptoms';
 import { downloadPatientReportPdf, exportPatientReportPdf } from '../api/export';
 import { getPatientProfile } from '../api/patient';
 import { 
@@ -33,7 +36,10 @@ import {
   BookOpen,
   MessageSquare,
   MapPin,
-  Settings
+  Settings,
+  Pill,
+  UserPlus,
+  Stethoscope
 } from 'lucide-react';
 
 interface ClinicianDashboardProps {
@@ -50,6 +56,7 @@ interface PatientData extends PatientClinicianLink {
   notes?: string;
   phone?: string;
   email?: string;
+  symptoms?: SymptomNote[];
 }
 
 export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
@@ -59,6 +66,9 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
   const [showClinicSchedule, setShowClinicSchedule] = useState(false);
   const [showClinicSettings, setShowClinicSettings] = useState(false);
   const [showAppointments, setShowAppointments] = useState(false);
+  const [showMedicationManagement, setShowMedicationManagement] = useState(false);
+  const [showPatientLinkManagement, setShowPatientLinkManagement] = useState(false);
+  const [medicationPatient, setMedicationPatient] = useState<PatientData | null>(null);
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -68,9 +78,8 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollPosition = useRef<number>(0);
 
-  // Fetch current user and patients on mount
-  useEffect(() => {
-    const fetchData = async () => {
+  // Fetch current user and patients
+  const fetchData = async () => {
       try {
         const user = await getCurrentUser();
         setCurrentUser(user);
@@ -91,6 +100,14 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 
                 // Fetch alerts
                 const alerts = await getAlerts(link.patientId);
+                
+                // Fetch symptoms
+                let symptoms: SymptomNote[] = [];
+                try {
+                  symptoms = await getSymptomLogs(link.patientId);
+                } catch (err) {
+                  console.error('Error fetching symptoms:', err);
+                }
                 
                 // Fetch notes
                 const notes = await getClinicianNotes(link.id);
@@ -136,6 +153,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   notes: latestNote,
                   phone: patientPhone,
                   email: patientEmail,
+                  symptoms,
                 } as PatientData;
               } catch (error) {
                 console.error(`Error fetching data for patient ${link.patientId}:`, error);
@@ -150,6 +168,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   notes: '',
                   phone: 'N/A',
                   email: 'N/A',
+                  symptoms: [],
                 } as PatientData;
               }
             })
@@ -162,10 +181,19 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
       } finally {
         setIsLoading(false);
       }
-    };
-    
+  };
+
+  // Fetch data on mount
+  useEffect(() => {
     fetchData();
   }, []);
+
+  // Refetch data when returning from sub-views
+  useEffect(() => {
+    if (!showMessaging && !showClinicSchedule && !showClinicSettings && !showAppointments && !showMedicationManagement && !showPatientLinkManagement) {
+      fetchData();
+    }
+  }, [showMessaging, showClinicSchedule, showClinicSettings, showAppointments, showMedicationManagement, showPatientLinkManagement]);
 
   // Save scroll position before navigating away
   useEffect(() => {
@@ -367,6 +395,39 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               </CardContent>
             </Card>
 
+            {/* Symptoms */}
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center space-x-2">
+                  <Stethoscope className="w-6 h-6 text-purple-600" />
+                  <span>Recent Symptoms ({patient.symptoms?.length || 0})</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {patient.symptoms && patient.symptoms.length > 0 ? (
+                  <div className="space-y-3">
+                    {patient.symptoms.slice(0, 5).map((symptom: SymptomNote, index: number) => (
+                      <div key={index} className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-semibold text-purple-900">{symptom.symptom}</h4>
+                          <span className="text-sm text-purple-600">
+                            {new Date(symptom.occurredAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {symptom.notes && (
+                          <p className="text-sm text-purple-700">{symptom.notes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border">
+                    <p className="text-lg text-gray-500 text-center">No symptoms reported</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Actions */}
             <div className="grid grid-cols-1 gap-4">
               <Button 
@@ -419,12 +480,47 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   <div className="text-sm text-gray-500">Direct phone call</div>
                 </div>
               </Button>
+              <Button 
+                variant="outline" 
+                className="h-18 border-2 rounded-xl shadow-lg hover:bg-orange-50"
+                onClick={() => {
+                  setMedicationPatient(patient);
+                  setSelectedPatient(null);
+                  setShowMedicationManagement(true);
+                }}
+              >
+                <Pill className="w-6 h-6 mr-3 text-orange-600" />
+                <div className="text-left">
+                  <div className="text-lg font-semibold">Manage Medications</div>
+                  <div className="text-sm text-gray-500">View and edit prescriptions</div>
+                </div>
+              </Button>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
+
+  // If medication management is open, show it fullscreen
+  if (showMedicationManagement && medicationPatient) {
+    return <ClinicianMedicationManagement 
+      patientId={medicationPatient.patientId}
+      patientName={medicationPatient.patientName}
+      onClose={() => {
+        setShowMedicationManagement(false);
+        setMedicationPatient(null);
+      }}
+    />;
+  }
+
+  // If patient link management is open, show it fullscreen
+  if (showPatientLinkManagement && currentUser) {
+    return <PatientLinkManagement 
+      clinicianId={currentUser.id}
+      onClose={() => setShowPatientLinkManagement(false)}
+    />;
+  }
 
   // If messaging is open, show it fullscreen
   if (showMessaging) {
@@ -591,9 +687,10 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               <Button 
                 variant="outline" 
                 className="h-20 flex flex-col space-y-2 rounded-xl border-2 hover:bg-purple-50 hover:border-purple-300"
+                onClick={() => setShowPatientLinkManagement(true)}
               >
-                <Download className="w-7 h-7 text-purple-600" />
-                <span className="font-medium">Export</span>
+                <UserPlus className="w-7 h-7 text-purple-600" />
+                <span className="font-medium text-center text-sm">Link<br/>Patients</span>
               </Button>
               <Button 
                 variant="outline" 
