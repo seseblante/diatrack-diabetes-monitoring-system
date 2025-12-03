@@ -1,10 +1,15 @@
 package app.hub_backend.serviceImpl;
 
+import app.hub_backend.DTO.patient.PatientDetailDto;
 import app.hub_backend.DTO.patient.PatientSettingsDto;
+import app.hub_backend.DTO.patient.PatientUpdateRequest;
 import app.hub_backend.entities.PatientSettings;
 import app.hub_backend.entities.User;
+import app.hub_backend.entities.UserProfile;
 import app.hub_backend.mapper.PatientMapper;
+import app.hub_backend.mapper.UserMapper;
 import app.hub_backend.repositories.PatientSettingsRepository;
+import app.hub_backend.repositories.UserProfileRepository;
 import app.hub_backend.repositories.UserRepository;
 import app.hub_backend.service.PatientService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +26,7 @@ public class PatientServiceImpl implements PatientService {
 
     private final PatientSettingsRepository settingsRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
 
     @Override
     @Transactional // Use @Transactional
@@ -63,5 +69,56 @@ public class PatientServiceImpl implements PatientService {
 
         // [FIXED] Use static call syntax here, not method reference
         return PatientMapper.toDto(updatedSettings);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PatientDetailDto getPatientProfile(UUID patientId) {
+        User user = userRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
+        
+        UserProfile profile = userProfileRepository.findById(patientId).orElse(null);
+        
+        return UserMapper.toPatientDetailDto(user, profile);
+    }
+
+    @Override
+    @Transactional
+    public PatientDetailDto updatePatientProfile(UUID patientId, PatientUpdateRequest updateRequest) {
+        User user = userRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
+        
+        // Update User fields
+        if (updateRequest.fullName() != null) {
+            user.setFullName(updateRequest.fullName());
+        }
+        if (updateRequest.phone() != null) {
+            user.setPhone(updateRequest.phone());
+        }
+        user.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(user);
+        
+        // Update or create UserProfile
+        UserProfile profile = userProfileRepository.findById(patientId)
+                .orElseGet(() -> {
+                    UserProfile newProfile = new UserProfile();
+                    newProfile.setUser(user);
+                    newProfile.setCreatedAt(OffsetDateTime.now());
+                    return newProfile;
+                });
+        
+        if (updateRequest.dob() != null) {
+            profile.setDob(updateRequest.dob());
+        }
+        if (updateRequest.sex() != null) {
+            profile.setSex(updateRequest.sex());
+        }
+        if (updateRequest.timezone() != null) {
+            profile.setTimezone(updateRequest.timezone());
+        }
+        profile.setUpdatedAt(OffsetDateTime.now());
+        userProfileRepository.save(profile);
+        
+        return UserMapper.toPatientDetailDto(user, profile);
     }
 }

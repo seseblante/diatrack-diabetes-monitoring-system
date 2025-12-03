@@ -9,6 +9,9 @@ import { Heart, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { ScrollArea } from './ui/scroll-area';
 import logoImage from '../assets/logoImage.png';
+import { post } from '../api/client';
+import { register } from '../api/auth';
+
 
 interface RegistrationPageProps {
   onBack: () => void;
@@ -30,6 +33,8 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -70,10 +75,35 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
     }
   };
 
-  const handleRegister = () => {
-    if (consentGiven) {
-      onRegister();
-    }
+  const handleRegister = async () => {
+  if (!consentGiven) {
+    return;
+  }
+
+  if (!validateForm()) {
+    return;
+  }
+
+  setSubmitError(null);
+  setIsSubmitting(true);
+
+  try {
+    const payload = {
+      email: formData.email,
+      password: formData.password,
+      fullName: formData.fullName,
+      phone: formData.phone,
+      role: formData.accountType === 'patient' ? 'PATIENT' : 'CLINICIAN',
+      isConsentGiven: true,
+};
+
+    await register(payload);
+    onRegister();
+  } catch (err: any) {
+    setSubmitError(err.message || 'Registration failed. Please try again.');
+  } finally {
+    setIsSubmitting(false);
+  }
   };
 
   if (step === 'consent') {
@@ -184,6 +214,12 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
               </ScrollArea>
 
               <div className="pt-4 border-t space-y-4">
+                {submitError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{submitError}</AlertDescription>
+                    </Alert>
+                )}
                 <div className="flex items-start space-x-3">
                   <Checkbox
                     id="consent"
@@ -203,10 +239,10 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
 
                 <Button
                   onClick={handleRegister}
-                  disabled={!consentGiven}
+                  disabled={!consentGiven || isSubmitting}
                   className="w-full h-14 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-lg"
                 >
-                  Complete Registration
+                  {isSubmitting ? 'Completing...' : 'Complete Registration'}
                 </Button>
               </div>
             </CardContent>

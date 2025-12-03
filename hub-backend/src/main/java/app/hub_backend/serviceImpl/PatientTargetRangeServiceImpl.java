@@ -63,8 +63,8 @@ public class PatientTargetRangeServiceImpl implements PatientTargetRangeService 
                 new DefaultRange(GlucoseContext.FASTING, new BigDecimal("71.00"), new BigDecimal("99.00")),
                 new DefaultRange(GlucoseContext.BEFORE_MEAL, new BigDecimal("71.00"), new BigDecimal("99.00")),
                 new DefaultRange(GlucoseContext.AFTER_MEAL, new BigDecimal("71.00"), new BigDecimal("140.00")),
-                new DefaultRange(GlucoseContext.BEDTIME, new BigDecimal("100.00"), new BigDecimal("140.00")),
-                new DefaultRange(GlucoseContext.RANDOM, new BigDecimal("71.00"), new BigDecimal("140.00"))
+                new DefaultRange(GlucoseContext.BEDTIME, new BigDecimal("100.00"), new BigDecimal("140.00"))
+                // Removed RANDOM as it violates DB constraint
         );
 
         List<PatientTargetRange> newRanges = defaults.stream()

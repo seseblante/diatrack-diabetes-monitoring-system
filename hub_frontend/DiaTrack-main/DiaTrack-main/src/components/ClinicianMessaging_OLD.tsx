@@ -1,17 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { ArrowLeft, User, Send, Clock, Check, Search } from 'lucide-react';
 import { Input } from './ui/input';
-import { getCurrentUser } from '../api/auth';
-import { getClinicianPatients, type PatientClinicianLink } from '../api/clinician';
-import { getMessages, sendMessage, type QuickMessage } from '../api/messages';
 
-interface PatientWithMessages extends PatientClinicianLink {
+interface Patient {
+  id: number;
+  name: string;
   lastSent?: string;
   lastSentTimestamp?: number;
+}
+
+interface Message {
+  id: number;
+  patientId: number;
+  content: string;
+  timestamp: string;
+  date: string;
+  read: boolean;
 }
 
 interface ClinicianMessagingProps {
@@ -19,94 +27,43 @@ interface ClinicianMessagingProps {
 }
 
 export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
-  const [selectedPatient, setSelectedPatient] = useState<PatientWithMessages | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showQuickMessages, setShowQuickMessages] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [patients, setPatients] = useState<PatientWithMessages[]>([]);
-  const [messages, setMessages] = useState<QuickMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
 
-  // Utility function to calculate time ago
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const then = new Date(timestamp);
-    const diffMs = now.getTime() - then.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays === 1) return 'Yesterday';
-    return `${diffDays} days ago`;
-  };
+  // Mock patients list with last sent times
+  const patientsData: Patient[] = [
+    {
+      id: 1,
+      name: 'Sheianne Seblante',
+      lastSent: '10 min ago',
+      lastSentTimestamp: Date.now() - 10 * 60 * 1000
+    },
+    {
+      id: 2,
+      name: 'Jose Reyes',
+      lastSent: '2 hours ago',
+      lastSentTimestamp: Date.now() - 2 * 60 * 60 * 1000
+    },
+    {
+      id: 3,
+      name: 'Arianne Acosta',
+      lastSent: 'Yesterday',
+      lastSentTimestamp: Date.now() - 24 * 60 * 60 * 1000
+    },
+    {
+      id: 4,
+      name: 'Joy Arellano'
+      // No messages sent yet
+    }
+  ];
 
-  // Fetch patients and their last message times
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const user = await getCurrentUser();
-        
-        if (user?.id) {
-          const patientLinks = await getClinicianPatients(user.id);
-          
-          // Fetch last message time for each patient
-          const patientsWithMessages = await Promise.all(
-            patientLinks.map(async (link) => {
-              try {
-                const msgs = await getMessages(link.id);
-                const lastMsg = msgs.length > 0 ? msgs[0] : null;
-                return {
-                  ...link,
-                  lastSent: lastMsg ? getTimeAgo(lastMsg.createdAt) : undefined,
-                  lastSentTimestamp: lastMsg ? new Date(lastMsg.createdAt).getTime() : undefined,
-                } as PatientWithMessages;
-              } catch (error) {
-                return {
-                  ...link,
-                  lastSent: undefined,
-                  lastSentTimestamp: undefined,
-                } as PatientWithMessages;
-              }
-            })
-          );
-          
-          setPatients(patientsWithMessages);
-        }
-      } catch (error) {
-        console.error('Error fetching patients:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
-
-  // Fetch messages when patient is selected
-  useEffect(() => {
-    const fetchMessages = async () => {
-      if (selectedPatient) {
-        try {
-          const msgs = await getMessages(selectedPatient.id);
-          setMessages(msgs);
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-        }
-      }
-    };
-    
-    fetchMessages();
-  }, [selectedPatient]);
-
-  // Filter patients by search term
-  const filteredPatients = patients
+  // Sort patients by ID number and filter by search term
+  const patients = [...patientsData]
     .filter(patient =>
-      patient.patientName.toLowerCase().includes(searchTerm.toLowerCase())
+      patient.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a, b) => a.patientName.localeCompare(b.patientName));
+    .sort((a, b) => a.id - b.id);
 
   // Pre-defined quick messages
   const quickMessageTemplates = [
@@ -178,40 +135,49 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
     }
   ];
 
-  const handleSendQuickMessage = async (messageContent: string) => {
-    if (!selectedPatient || isSending) return;
-
-    setIsSending(true);
-    try {
-      const newMessage = await sendMessage(selectedPatient.id, { messageContent });
-      setMessages([newMessage, ...messages]);
-      setShowQuickMessages(false);
-      
-      // Update patient's last sent time
-      setPatients(patients.map(p => 
-        p.id === selectedPatient.id 
-          ? { ...p, lastSent: 'Just now', lastSentTimestamp: Date.now() }
-          : p
-      ));
-    } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
-    } finally {
-      setIsSending(false);
+  // Mock messages for selected patient
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 1,
+      patientId: 1,
+      content: 'Great job with your readings!',
+      timestamp: '2:30 PM',
+      date: 'Today',
+      read: true
+    },
+    {
+      id: 2,
+      patientId: 1,
+      content: 'Check your glucose today',
+      timestamp: '10:15 AM',
+      date: 'Today',
+      read: true
+    },
+    {
+      id: 3,
+      patientId: 1,
+      content: 'See you Oct 15 at 2PM',
+      timestamp: '4:45 PM',
+      date: 'Yesterday',
+      read: true
     }
-  };
+  ]);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center pt-11">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading patients...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleSendQuickMessage = (messageContent: string) => {
+    if (!selectedPatient) return;
+
+    const newMessage: Message = {
+      id: Date.now(),
+      patientId: selectedPatient.id,
+      content: messageContent,
+      timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: 'Today',
+      read: false
+    };
+
+    setMessages([newMessage, ...messages]);
+    setShowQuickMessages(false);
+  };
 
   // Quick Messages Selection View
   if (showQuickMessages && selectedPatient) {
@@ -225,13 +191,12 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
               size="icon"
               onClick={() => setShowQuickMessages(false)}
               className="rounded-full"
-              disabled={isSending}
             >
               <ArrowLeft className="w-6 h-6" />
             </Button>
             <div>
               <h2 className="font-semibold">Send Quick Message</h2>
-              <p className="text-sm text-gray-500">To: {selectedPatient.patientName}</p>
+              <p className="text-sm text-gray-500">To: {selectedPatient.name}</p>
             </div>
           </div>
         </div>
@@ -254,7 +219,6 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
                       variant="outline"
                       className="w-full justify-start h-auto py-4 text-left bg-white hover:bg-gray-50 border-2"
                       onClick={() => handleSendQuickMessage(message)}
-                      disabled={isSending}
                     >
                       <div className="flex items-start space-x-2 w-full">
                         <Send className="w-4 h-4 mt-1 flex-shrink-0 text-blue-600" />
@@ -273,6 +237,8 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
 
   // Patient Message History View
   if (selectedPatient) {
+    const patientMessages = messages.filter(m => m.patientId === selectedPatient.id);
+
     return (
       <div className="h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col pt-11">
         {/* Header */}
@@ -292,7 +258,7 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h2 className="font-semibold">{selectedPatient.patientName}</h2>
+              <h2 className="font-semibold">{selectedPatient.name}</h2>
               <p className="text-xs text-gray-500">Patient Messages</p>
             </div>
           </div>
@@ -307,7 +273,7 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
 
         {/* Messages History */}
         <div className="flex-1 px-4 py-4 overflow-y-auto">
-          {messages.length === 0 && (
+          {patientMessages.length === 0 && (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Send className="w-8 h-8 text-gray-400" />
@@ -319,19 +285,17 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
             </div>
           )}
 
-          {messages.length > 0 && (
+          {patientMessages.length > 0 && (
             <div className="space-y-3">
-              {messages.map((message) => (
+              {patientMessages.map((message) => (
                 <Card key={message.id} className="border-0 shadow-md bg-white">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center space-x-2 text-xs text-gray-500">
                         <Clock className="w-3 h-3 flex-shrink-0" />
-                        <span className="whitespace-nowrap">
-                          {new Date(message.createdAt).toLocaleDateString()} · {new Date(message.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                        </span>
+                        <span className="whitespace-nowrap">{message.date} · {message.timestamp}</span>
                       </div>
-                      {message.readAt ? (
+                      {message.read ? (
                         <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300 flex-shrink-0">
                           <Check className="w-3 h-3 mr-1" />
                           Read
@@ -342,7 +306,7 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-gray-800 leading-relaxed break-words">{message.messageContent}</p>
+                    <p className="text-gray-800 leading-relaxed break-words">{message.content}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -388,20 +352,8 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
 
       {/* Patients List */}
       <div className="flex-1 px-4 py-4 overflow-y-auto">
-        {filteredPatients.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-gray-400" />
-            </div>
-            <p className="text-gray-500 mb-2">No patients found</p>
-            <p className="text-sm text-gray-400">
-              {searchTerm ? 'Try adjusting your search' : 'No patients linked to your account'}
-            </p>
-          </div>
-        )}
-
         <div className="space-y-3">
-          {filteredPatients.map((patient) => (
+          {patients.map((patient) => (
             <Card
               key={patient.id}
               className="cursor-pointer hover:shadow-lg transition-all border-0 bg-white"
@@ -416,9 +368,9 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-gray-900">{patient.patientName}</h3>
+                      <h3 className="font-semibold text-gray-900">{patient.name}</h3>
                       <Badge variant="outline" className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-gray-300">
-                        ID: {patient.patientId.substring(0, 8)}...
+                        ID: {patient.id}
                       </Badge>
                     </div>
                     {patient.lastSent && (
@@ -434,15 +386,13 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
           ))}
         </div>
 
-        {filteredPatients.length > 0 && (
-          <Card className="bg-indigo-50 border-indigo-200 mt-4">
-            <CardContent className="p-4">
-              <p className="text-sm text-indigo-800 text-center">
-                💬 Select a patient to send them a quick message
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        <Card className="bg-indigo-50 border-indigo-200 mt-4">
+          <CardContent className="p-4">
+            <p className="text-sm text-indigo-800 text-center">
+              💬 Select a patient to send them a quick message
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

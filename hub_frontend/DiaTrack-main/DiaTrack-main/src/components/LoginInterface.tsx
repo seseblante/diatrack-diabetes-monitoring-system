@@ -6,6 +6,7 @@ import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Heart, Eye, EyeOff } from 'lucide-react';
 import logoImage from '../assets/logoImage.png';
+import { login } from '../api/auth';
 
 interface LoginInterfaceProps {
   onLogin: (userType: 'patient' | 'clinician') => void;
@@ -18,6 +19,7 @@ export function LoginInterface({ onLogin, onCreateAccount }: LoginInterfaceProps
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Check for saved credentials on mount
   useEffect(() => {
@@ -30,8 +32,9 @@ export function LoginInterface({ onLogin, onCreateAccount }: LoginInterfaceProps
     }
   }, []);
 
-  const handleLogin = async (userType: 'patient' | 'clinician') => {
+  const handleLogin = async () => {
     setIsLoading(true);
+    setLoginError(null);
     
     // Save credentials if Remember Me is checked
     if (rememberMe) {
@@ -42,10 +45,20 @@ export function LoginInterface({ onLogin, onCreateAccount }: LoginInterfaceProps
       localStorage.removeItem('rememberMe');
     }
     
-    // Simulate quick login process
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    onLogin(userType);
+    try {
+      const response = await login(email, password);
+      // Use the role from backend response to determine which dashboard to show
+      const userRole = response.user.role.toLowerCase();
+      if (userRole === 'patient' || userRole === 'clinician') {
+        onLogin(userRole as 'patient' | 'clinician');
+      } else {
+        setLoginError('Invalid user role. Please contact support.');
+      }
+    } catch (err: any) {
+      setLoginError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleQuickLogin = (userType: 'patient' | 'clinician') => {
@@ -121,12 +134,19 @@ export function LoginInterface({ onLogin, onCreateAccount }: LoginInterfaceProps
 
               {/* Regular Login Button */}
               <Button
-                onClick={() => handleLogin('patient')}
+                onClick={handleLogin}
                 className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-lg"
                 disabled={isLoading || !email || !password}
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
+
+              {/* Error Message */}
+              {loginError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                  {loginError}
+                </div>
+              )}
 
               {/* Divider */}
               <div className="relative">

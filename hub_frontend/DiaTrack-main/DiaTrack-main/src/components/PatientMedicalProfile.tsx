@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
-import { ArrowLeft, User, Pill, Plus, Trash2, Check } from 'lucide-react';
+import { ArrowLeft, User, Pill, Plus, Trash2, Check, Edit2, Save } from 'lucide-react';
+import { getCurrentUser } from '../api/auth';
+import { getCurrentUserProfile, PatientDetail, updatePatientProfile, PatientUpdateRequest } from '../api/patient';
+import { getMedicationRegimens, MedicationRegimen } from '../api/medications';
 
 interface PatientMedicalProfileProps {
   onClose: () => void;
@@ -15,34 +18,95 @@ interface Medication {
 }
 
 export function PatientMedicalProfile({ onClose }: PatientMedicalProfileProps) {
-  const [fullName, setFullName] = useState('Juan Dela Cruz');
-  const [age, setAge] = useState('45');
-  const [diagnosisYear, setDiagnosisYear] = useState('2018');
-  const [medications, setMedications] = useState<Medication[]>([
-    { name: 'Metformin', dosage: '500 mg', frequency: 'Morning' },
-    { name: 'Insulin (Long-acting)', dosage: '20 units', frequency: 'Evening' },
-  ]);
-
+  const currentUser = getCurrentUser();
+  const [patientData, setPatientData] = useState<PatientDetail | null>(null);
+  const [medications, setMedications] = useState<MedicationRegimen[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-
-  const addMedication = () => {
-    setMedications([...medications, { name: '', dosage: '', frequency: '' }]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPhone, setEditedPhone] = useState('');
+  const [editedEmail, setEditedEmail] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Fetch patient data and medications from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!currentUser?.id) return;
+      
+      try {
+        const [profileData, medicationData] = await Promise.all([
+          getCurrentUserProfile(),
+          getMedicationRegimens(currentUser.id)
+        ]);
+        
+        setPatientData(profileData);
+        setMedications(medicationData);
+        setEditedPhone(profileData.phone || '');
+        setEditedEmail(profileData.email || '');
+      } catch (error) {
+        console.error('Error fetching patient data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [currentUser?.id]);
+  
+  // Calculate age from date of birth
+  const calculateAge = (dob: string) => {
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
-  const removeMedication = (index: number) => {
-    setMedications(medications.filter((_, i) => i !== index));
+  const handleEdit = () => {
+    setIsEditing(true);
   };
 
-  const updateMedication = (index: number, field: keyof Medication, value: string) => {
-    const updated = [...medications];
-    updated[index][field] = value;
-    setMedications(updated);
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedPhone(patientData?.phone || '');
+    setEditedEmail(patientData?.email || '');
   };
 
-  const handleSave = () => {
-    setShowSuccessPopup(true);
-    setTimeout(() => setShowSuccessPopup(false), 3000);
+  const handleSave = async () => {
+    if (!currentUser?.id) return;
+    
+    setIsSaving(true);
+    try {
+      const updateRequest: PatientUpdateRequest = {
+        phone: editedPhone,
+      };
+      
+      const updatedProfile = await updatePatientProfile(currentUser.id, updateRequest);
+      setPatientData(updatedProfile);
+      setIsEditing(false);
+      setShowSuccessPopup(true);
+      setTimeout(() => setShowSuccessPopup(false), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+  
+  if (isLoading) {
+    return (
+      <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col pt-11">
@@ -79,10 +143,29 @@ export function PatientMedicalProfile({ onClose }: PatientMedicalProfileProps) {
               <div>
                 <label className="block font-medium mb-2 text-gray-700">Full Name</label>
                 <Input 
-                  placeholder="Juan Dela Cruz" 
+                  placeholder="Full Name" 
                   className="h-14 border-2 border-blue-300 rounded-xl bg-white"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={patientData?.fullName || ''}
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block font-medium mb-2 text-gray-700">Email</label>
+                <Input 
+                  placeholder="Email" 
+                  className="h-14 border-2 border-blue-300 rounded-xl bg-white"
+                  value={patientData?.email || ''}
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block font-medium mb-2 text-gray-700">Phone Number</label>
+                <Input 
+                  placeholder="Phone Number" 
+                  className="h-14 border-2 border-blue-300 rounded-xl bg-white"
+                  value={isEditing ? editedPhone : (patientData?.phone || '')}
+                  onChange={(e) => setEditedPhone(e.target.value)}
+                  readOnly={!isEditing}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -90,92 +173,97 @@ export function PatientMedicalProfile({ onClose }: PatientMedicalProfileProps) {
                   <label className="block font-medium mb-2 text-gray-700">Age</label>
                   <Input 
                     type="number" 
-                    placeholder="45" 
+                    placeholder="Age" 
                     className="h-14 border-2 border-blue-300 rounded-xl bg-white"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
+                    value={patientData?.dob ? calculateAge(patientData.dob) : ''}
+                    readOnly
                   />
                 </div>
                 <div>
-                  <label className="block font-medium mb-2 text-gray-700">Diagnosis Year</label>
+                  <label className="block font-medium mb-2 text-gray-700">Sex</label>
                   <Input 
-                    type="number" 
-                    placeholder="2018" 
+                    placeholder="Sex" 
                     className="h-14 border-2 border-blue-300 rounded-xl bg-white"
-                    value={diagnosisYear}
-                    onChange={(e) => setDiagnosisYear(e.target.value)}
+                    value={patientData?.sex || ''}
+                    readOnly
                   />
                 </div>
               </div>
+              {!isEditing ? (
+                <Button 
+                  onClick={handleEdit}
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit Contact Info
+                </Button>
+              ) : (
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={handleCancel}
+                    variant="outline"
+                    className="flex-1 h-12"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex-1 h-12 bg-green-600 hover:bg-green-700"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Medication Schedule */}
           <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-2">
-                  <Pill className="w-6 h-6 text-purple-600" />
-                  <span>Medication Schedule</span>
-                </CardTitle>
-                <Button 
-                  size="sm" 
-                  className="bg-purple-600 hover:bg-purple-700 h-10"
-                  onClick={addMedication}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add
-                </Button>
-              </div>
+              <CardTitle className="flex items-center space-x-2">
+                <Pill className="w-6 h-6 text-purple-600" />
+                <span>Current Medications</span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {medications.map((medication, index) => (
-                <div key={index} className="p-4 bg-white rounded-xl border-2 border-purple-200 relative">
-                  <div className="space-y-3">
-                    <Input 
-                      placeholder="Medication name (e.g., Metformin)" 
-                      className="h-12 border-2 border-purple-300 rounded-xl"
-                      value={medication.name}
-                      onChange={(e) => updateMedication(index, 'name', e.target.value)}
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input 
-                        placeholder="Dosage" 
-                        className="h-12 border-2 border-purple-300 rounded-xl"
-                        value={medication.dosage}
-                        onChange={(e) => updateMedication(index, 'dosage', e.target.value)}
-                      />
-                      <Input 
-                        placeholder="Frequency" 
-                        className="h-12 border-2 border-purple-300 rounded-xl"
-                        value={medication.frequency}
-                        onChange={(e) => updateMedication(index, 'frequency', e.target.value)}
-                      />
+              {medications.length > 0 ? (
+                medications.map((medication) => (
+                  <div key={medication.id} className="p-4 bg-white rounded-xl border-2 border-purple-200">
+                    <div className="space-y-2">
+                      <div className="font-semibold text-lg text-gray-900">{medication.medicationName}</div>
+                      <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+                        <div>
+                          <span className="font-medium">Dosage:</span> {medication.doseAmount} {medication.doseUnit}
+                        </div>
+                        <div>
+                          <span className="font-medium">Frequency:</span> {medication.frequencyValue}x {medication.frequencyType.toLowerCase()}
+                        </div>
+                      </div>
+                      {medication.instructions && (
+                        <div className="text-sm text-gray-600 mt-2">
+                          <span className="font-medium">Instructions:</span> {medication.instructions}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {medications.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full hover:bg-red-100"
-                      onClick={() => removeMedication(index)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </Button>
-                  )}
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No medications prescribed</p>
+                  <p className="text-sm">Contact your doctor to add medications</p>
                 </div>
-              ))}
+              )}
+              <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Medications are managed by your healthcare provider. 
+                  Contact your doctor if you need changes to your medication regimen.
+                </p>
+              </div>
             </CardContent>
           </Card>
-
-          {/* Save Button */}
-          <Button 
-            className="w-full h-16 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl shadow-lg"
-            onClick={handleSave}
-          >
-            <Check className="w-5 h-5 mr-2" />
-            Save Medical Profile
-          </Button>
         </div>
       </div>
 

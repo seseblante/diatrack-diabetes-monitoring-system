@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
@@ -6,7 +6,16 @@ import { Input } from './ui/input';
 import { PatientMessaging } from './PatientMessaging';
 import { PatientClinicSchedule } from './PatientClinicSchedule';
 import { PatientMedicalProfile } from './PatientMedicalProfile';
+import { EducationalResources } from './EducationalResources';
 import logoImage from '../assets/logoImage.png';
+import { getCurrentUser } from '../api/auth';
+import { getGlucoseReadings, logGlucoseReading, GlucoseReading, GlucoseContextType } from '../api/glucose';
+import { getMealLogs, logMeal, Meal } from '../api/meals';
+import { getMedicationRegimens, getMedicationLogs, logMedicationTaken, MedicationRegimen, MedicationLog } from '../api/medications';
+import { getMessages, markMessagesAsRead, QuickMessage } from '../api/messages';
+import { getPatientClinicians, PatientClinicianLink } from '../api/patient';
+import { exportPatientReportPdf } from '../api/export';
+import { logSymptom, getSymptomLogs, SymptomNote } from '../api/symptoms';
 import { 
   Activity, 
   Heart, 
@@ -49,9 +58,73 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   const [showMedicalProfile, setShowMedicalProfile] = useState(false);
   const [showMessaging, setShowMessaging] = useState(false);
   const [showClinicSchedule, setShowClinicSchedule] = useState(false);
+  const [showEducationalResources, setShowEducationalResources] = useState(false);
   const [glucoseValue, setGlucoseValue] = useState('');
+  const [glucoseContext, setGlucoseContext] = useState<GlucoseContextType>('Fasting');
   const [mealDescription, setMealDescription] = useState('');
   const [carbsValue, setCarbsValue] = useState('');
+  const [mealTime, setMealTime] = useState('');
+  const [symptomDescription, setSymptomDescription] = useState('');
+  const [symptomSeverity, setSymptomSeverity] = useState('Mild');
+  const [symptomNotesInput, setSymptomNotesInput] = useState('');
+  
+  // Backend data state
+  const [glucoseReadings, setGlucoseReadings] = useState<GlucoseReading[]>([]);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [medicationRegimens, setMedicationRegimens] = useState<MedicationRegimen[]>([]);
+  const [medicationLogs, setMedicationLogs] = useState<MedicationLog[]>([]);
+  const [clinicianLinks, setClinicianLinks] = useState<PatientClinicianLink[]>([]);
+  const [messages, setMessages] = useState<QuickMessage[]>([]);
+  const [symptomNotes, setSymptomNotes] = useState<SymptomNote[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Get current user
+  const currentUser = getCurrentUser();
+
+  // Fetch data from backend on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!currentUser?.id) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // First fetch clinician links to get the link ID for messages
+        const clinicianLinksData = await getPatientClinicians(currentUser.id);
+        setClinicianLinks(clinicianLinksData);
+        
+        // Then fetch other data in parallel
+        const [glucoseData, mealsData, regimensData, logsData, symptomsData] = await Promise.all([
+          getGlucoseReadings(currentUser.id),
+          getMealLogs(currentUser.id),
+          getMedicationRegimens(currentUser.id),
+          getMedicationLogs(currentUser.id),
+          getSymptomLogs(currentUser.id)
+        ]);
+        
+        setGlucoseReadings(glucoseData);
+        setMeals(mealsData);
+        setMedicationRegimens(regimensData);
+        setMedicationLogs(logsData);
+        setSymptomNotes(symptomsData);
+        
+        // Fetch messages if there are clinician links
+        if (clinicianLinksData.length > 0) {
+          const messagesData = await getMessages(clinicianLinksData[0].id);
+          setMessages(messagesData);
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load data');
+        console.error('Error fetching data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [currentUser?.id]);
 
   // Get current date and time
   const getCurrentDate = () => {
@@ -72,48 +145,169 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     return 'Good evening';
   };
 
-  // Mock data - Current date is October 1, 2025
-  const todaysReadings = [
-    { time: '7:30 AM', value: 125, status: 'good', context: 'Fasting' },
-    { time: '12:15 PM', value: 180, status: 'high', context: 'After Meal' },
-    { time: '6:45 PM', value: 110, status: 'good', context: 'Before Meal' }
-  ];
-
-  const previousReadings = [
-    { date: 'Sep 30', time: '8:00 AM', value: 118, status: 'good', context: 'Fasting' },
-    { date: 'Sep 30', time: '1:00 PM', value: 165, status: 'high', context: 'After Meal' },
-    { date: 'Sep 30', time: '7:00 PM', value: 112, status: 'good', context: 'Before Meal' },
-    { date: 'Sep 29', time: '7:45 AM', value: 122, status: 'good', context: 'Fasting' },
-    { date: 'Sep 29', time: '12:30 PM', value: 175, status: 'high', context: 'After Meal' },
-    { date: 'Sep 29', time: '7:15 PM', value: 108, status: 'good', context: 'Bedtime' },
-    { date: 'Sep 28', time: '8:15 AM', value: 130, status: 'good', context: 'Fasting' },
-    { date: 'Sep 28', time: '2:00 PM', value: 195, status: 'high', context: 'After Meal' },
-  ];
-
-  const previousMeals = [
-    { date: 'Sep 30', time: '12:30 PM', meal: 'Grilled chicken salad with vinaigrette', carbs: 35 },
-    { date: 'Sep 30', time: '7:00 AM', meal: 'Oatmeal with berries and almonds', carbs: 42 },
-    { date: 'Sep 29', time: '6:30 PM', meal: 'Baked salmon with quinoa and vegetables', carbs: 38 },
-    { date: 'Sep 29', time: '12:00 PM', meal: 'Turkey sandwich on whole grain bread', carbs: 45 },
-    { date: 'Sep 28', time: '6:00 PM', meal: 'Grilled chicken with steamed broccoli', carbs: 28 },
-  ];
-
-  const previousMedications = [
-    { date: 'Oct 5', time: '8:00 PM', medication: 'Insulin (Long-acting)', dose: '20 units', status: 'taken' },
-    { date: 'Oct 5', time: '8:00 AM', medication: 'Metformin 500mg', dose: '1 tablet', status: 'taken' },
-    { date: 'Oct 4', time: '8:00 PM', medication: 'Insulin (Long-acting)', dose: '20 units', status: 'taken' },
-    { date: 'Oct 4', time: '8:00 AM', medication: 'Metformin 500mg', dose: '1 tablet', status: 'missed' },
-  ];
-
-  const weeklyStats = {
-    averageGlucose: 142,
-    timeInRange: 68,
-    lowEvents: 2,
-    highEvents: 5,
-    loggedMeals: 18,
-    missedMeds: 1,
-    streak: 7
+  // Helper functions to process backend data
+  const getGlucoseStatus = (value: number): 'good' | 'high' | 'low' => {
+    if (value < 70) return 'low';
+    if (value > 180) return 'high';
+    return 'good';
   };
+
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Generate dynamic glucose trend message based on recent readings
+  const getGlucoseTrendMessage = () => {
+    if (glucoseReadings.length === 0) {
+      return "Start logging your glucose readings to see your progress!";
+    }
+
+    // Get last 7 days of readings
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentReadings = glucoseReadings.filter(
+      r => new Date(r.measuredAt) >= sevenDaysAgo
+    );
+
+    if (recentReadings.length === 0) {
+      return "No recent glucose readings. Keep logging to track your progress!";
+    }
+
+    // Calculate percentage in target range (70-180 mg/dL)
+    const inRange = recentReadings.filter(
+      r => Number(r.valueMgdl) >= 70 && Number(r.valueMgdl) <= 180
+    ).length;
+    const percentageInRange = (inRange / recentReadings.length) * 100;
+
+    // Calculate average
+    const average = recentReadings.reduce((sum, r) => sum + Number(r.valueMgdl), 0) / recentReadings.length;
+
+    if (percentageInRange >= 70) {
+      return `Great progress! Your glucose levels are trending well. ${percentageInRange.toFixed(0)}% of readings in target range. Keep up the good work with your meal logging and medication adherence.`;
+    } else if (percentageInRange >= 50) {
+      return `Good effort! ${percentageInRange.toFixed(0)}% of your readings are in range. Continue monitoring your diet and medications to improve further.`;
+    } else {
+      return `Your glucose levels need attention. Only ${percentageInRange.toFixed(0)}% in target range. Please review your meal plan and medication schedule with your doctor.`;
+    }
+  };
+
+  // Handle export report
+  const handleExportReport = async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      const blob = await exportPatientReportPdf(currentUser.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `patient_report_${currentUser.fullName || 'report'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      alert('Failed to export report. Please try again.');
+    }
+  };
+
+  // Process glucose readings from backend - REACTIVE with useMemo
+  const todaysReadings = useMemo(() => {
+    return glucoseReadings
+      .filter(r => formatDate(r.measuredAt) === 'Today')
+      .map(r => ({
+        time: formatTime(r.measuredAt),
+        value: Number(r.valueMgdl),
+        status: getGlucoseStatus(Number(r.valueMgdl)),
+        context: r.context,
+        measuredAt: r.measuredAt
+      }))
+      .sort((a, b) => new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime());
+  }, [glucoseReadings]);
+
+  const previousReadings = useMemo(() => {
+    return glucoseReadings
+      .filter(r => formatDate(r.measuredAt) !== 'Today')
+      .map(r => ({
+        date: formatDate(r.measuredAt),
+        time: formatTime(r.measuredAt),
+        value: Number(r.valueMgdl),
+        status: getGlucoseStatus(Number(r.valueMgdl)),
+        context: r.context,
+        measuredAt: r.measuredAt
+      }))
+      .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
+      .slice(0, 10);
+  }, [glucoseReadings]);
+
+  const previousMeals = useMemo(() => {
+    return meals
+      .map(m => ({
+        date: formatDate(m.loggedAt),
+        time: formatTime(m.loggedAt),
+        meal: m.description,
+        carbs: m.carbsG ? Number(m.carbsG) : undefined,
+        loggedAt: m.loggedAt
+      }))
+      .sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime())
+      .slice(0, 10);
+  }, [meals]);
+
+  // Calculate stats from backend data - REACTIVE with useMemo
+  const weeklyStats = useMemo(() => {
+    const allGlucoseValues = glucoseReadings.map(r => Number(r.valueMgdl));
+    const averageGlucose = allGlucoseValues.length > 0 
+      ? Math.round(allGlucoseValues.reduce((a, b) => a + b, 0) / allGlucoseValues.length)
+      : 0;
+    const highEvents = allGlucoseValues.filter(v => v > 180).length;
+    const lowEvents = allGlucoseValues.filter(v => v < 70).length;
+
+    // Calculate streak - consecutive days with at least one glucose reading
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 365; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(checkDate.getDate() - i);
+      const hasReadingOnDay = glucoseReadings.some(r => {
+        const readingDate = new Date(r.measuredAt);
+        readingDate.setHours(0, 0, 0, 0);
+        return readingDate.getTime() === checkDate.getTime();
+      });
+      
+      if (hasReadingOnDay) {
+        streak++;
+      } else if (i > 0) {
+        // Stop counting if we hit a day with no reading (but allow today to be empty)
+        break;
+      }
+    }
+
+    return {
+      averageGlucose,
+      timeInRange: allGlucoseValues.length > 0 
+        ? Math.round((allGlucoseValues.filter(v => v >= 70 && v <= 180).length / allGlucoseValues.length) * 100)
+        : 0,
+      lowEvents,
+      highEvents,
+      loggedMeals: meals.length,
+      missedMeds: 0, // Calculated from medication logs
+      streak
+    };
+  }, [glucoseReadings, meals]);
 
   const tips = [
     { emoji: '💡', text: 'Eating protein with meals can help slow carb absorption and prevent spikes.' },
@@ -128,13 +322,8 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     { time: '8:00 PM', text: 'Evening insulin dose', icon: '💉' },
   ];
 
-  const messages = [
-    { id: 1, from: 'Dr. Maria Santos', content: 'Great job with your readings!', time: '2:30 PM', date: 'Today', read: false },
-    { id: 2, from: 'Dr. Maria Santos', content: 'Check your glucose today', time: '10:15 AM', date: 'Today', read: false },
-    { id: 3, from: 'Dr. Maria Santos', content: 'Excellent work this week!', time: '4:45 PM', date: 'Yesterday', read: true },
-  ];
-
-  const unreadMessagesCount = messages.filter(m => !m.read).length;
+  // Calculate unread messages count from backend data
+  const unreadMessagesCount = messages.filter(m => !m.readAt).length;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -154,20 +343,76 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     }
   };
 
-  const handleSaveGlucose = () => {
-    if (glucoseValue) {
-      console.log('Saving glucose:', glucoseValue);
+  const handleSaveGlucose = async () => {
+    if (!glucoseValue || !currentUser?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const newReading = await logGlucoseReading(currentUser.id, {
+        measuredAt: new Date().toISOString(),
+        valueMgdl: parseFloat(glucoseValue),
+        context: glucoseContext
+      });
+      
+      // Add to local state
+      setGlucoseReadings(prev => [...prev, newReading]);
+      
+      // Reset form
       setGlucoseValue('');
+      setGlucoseContext('Fasting');
       setQuickLogType(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save glucose reading');
+      console.error('Error saving glucose:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSaveMeal = () => {
-    if (mealDescription) {
-      console.log('Saving meal:', { description: mealDescription, carbs: carbsValue });
+  const handleSaveMeal = async () => {
+    if (!mealDescription || !currentUser?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const newMeal = await logMeal(currentUser.id, {
+        loggedAt: mealTime || new Date().toISOString(),
+        description: mealDescription,
+        carbsG: carbsValue ? parseFloat(carbsValue) : undefined
+      });
+      
+      // Add to local state
+      setMeals(prev => [...prev, newMeal]);
+      
+      // Reset form
       setMealDescription('');
       setCarbsValue('');
+      setMealTime('');
       setQuickLogType(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save meal');
+      console.error('Error saving meal:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogMedication = async (regimenId: string) => {
+    if (!currentUser?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const newLog = await logMedicationTaken(currentUser.id, {
+        regimenId,
+        takenAt: new Date().toISOString()
+      });
+      
+      // Add to local state
+      setMedicationLogs(prev => [...prev, newLog]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to log medication');
+      console.error('Error logging medication:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -210,28 +455,41 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {messages.map((message) => (
-                    <div 
-                      key={message.id} 
-                      className={`flex items-start space-x-4 p-4 rounded-xl border cursor-pointer transition-all ${
-                        !message.read 
-                          ? 'bg-indigo-50 border-indigo-300 shadow-md' 
-                          : 'bg-white border-indigo-200'
-                      }`}
-                      onClick={() => setShowMessaging(true)}
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-semibold text-gray-900">{message.from}</p>
-                          {!message.read && (
-                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                          )}
+                  {messages.length > 0 ? (
+                    messages.map((message) => {
+                      // Find the clinician name from links
+                      const clinician = clinicianLinks.find(link => link.id === message.patientClinicianLinkId);
+                      const clinicianName = clinician?.clinicianName || 'Doctor';
+                      
+                      return (
+                        <div 
+                          key={message.id} 
+                          className={`flex items-start space-x-4 p-4 rounded-xl border cursor-pointer transition-all ${
+                            !message.readAt 
+                              ? 'bg-indigo-50 border-indigo-300 shadow-md' 
+                              : 'bg-white border-indigo-200'
+                          }`}
+                          onClick={() => setShowMessaging(true)}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="font-semibold text-gray-900">{clinicianName}</p>
+                              {!message.readAt && (
+                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                              )}
+                            </div>
+                            <p className="text-gray-700 mb-1">{message.messageContent}</p>
+                            <p className="text-sm text-gray-500">{formatDate(message.createdAt)} • {formatTime(message.createdAt)}</p>
+                          </div>
                         </div>
-                        <p className="text-gray-700 mb-1">{message.content}</p>
-                        <p className="text-sm text-gray-500">{message.date} • {message.time}</p>
-                      </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>No messages yet</p>
                     </div>
-                  ))}
+                  )}
                   <Button 
                     variant="outline" 
                     className="w-full h-12 border-indigo-300 text-indigo-600 hover:bg-indigo-50"
@@ -341,16 +599,32 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                     <div className="space-y-3">
                       <p className="text-center text-gray-600 font-medium">When was this taken?</p>
                       <div className="grid grid-cols-1 gap-3">
-                        <Button variant="outline" className="h-12 rounded-xl border-2 hover:bg-blue-50">
+                        <Button 
+                          variant="outline" 
+                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'Fasting' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                          onClick={() => setGlucoseContext('Fasting')}
+                        >
                           Fasting
                         </Button>
-                        <Button variant="outline" className="h-12 rounded-xl border-2 hover:bg-blue-50">
+                        <Button 
+                          variant="outline" 
+                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'Before Meal' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                          onClick={() => setGlucoseContext('Before Meal')}
+                        >
                           Before Meal
                         </Button>
-                        <Button variant="outline" className="h-12 rounded-xl border-2 hover:bg-blue-50">
+                        <Button 
+                          variant="outline" 
+                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'After Meal' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                          onClick={() => setGlucoseContext('After Meal')}
+                        >
                           After Meal
                         </Button>
-                        <Button variant="outline" className="h-12 rounded-xl border-2 hover:bg-blue-50">
+                        <Button 
+                          variant="outline" 
+                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'Bedtime' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                          onClick={() => setGlucoseContext('Bedtime')}
+                        >
                           Bedtime
                         </Button>
                       </div>
@@ -359,9 +633,9 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                     <Button 
                       onClick={handleSaveGlucose}
                       className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg"
-                      disabled={!glucoseValue}
+                      disabled={!glucoseValue || isLoading}
                     >
-                      {glucoseValue ? `Save Reading: ${glucoseValue} mg/dL` : 'Enter Reading First'}
+                      {isLoading ? '⏳ Saving...' : (glucoseValue ? `Save Reading: ${glucoseValue} mg/dL` : 'Enter Reading First')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -383,20 +657,33 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                     </div>
                     
                     <div>
+                      <label className="block font-semibold mb-2 text-gray-800">Carbs (grams) 🍞</label>
+                      <Input 
+                        type="number" 
+                        placeholder="e.g., 45"
+                        value={carbsValue}
+                        onChange={(e) => setCarbsValue(e.target.value)}
+                        className="h-12 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 bg-white shadow-lg"
+                        inputMode="numeric"
+                      />
+                    </div>
+
+                    <div>
                       <label className="block font-semibold mb-2 text-gray-800">Time eaten 🕐</label>
                       <Input 
                         type="time" 
+                        value={mealTime}
+                        onChange={(e) => setMealTime(e.target.value)}
                         className="h-12 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 bg-white shadow-lg"
-                        defaultValue={new Date().toTimeString().slice(0, 5)}
                       />
                     </div>
                     
                     <Button 
                       onClick={handleSaveMeal}
                       className="w-full h-14 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl shadow-lg"
-                      disabled={!mealDescription}
+                      disabled={!mealDescription || isLoading}
                     >
-                      {mealDescription ? '✅ Log This Meal' : 'Describe Your Meal First'}
+                      {isLoading ? '⏳ Saving...' : (mealDescription ? '✅ Log This Meal' : 'Describe Your Meal First')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -415,37 +702,45 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                     </div>
                     
                     <div className="space-y-3">
-                      <Button 
-                        variant="outline" 
-                        className="w-full h-16 justify-between text-left rounded-xl border-2 border-purple-300 bg-white hover:bg-purple-50 shadow-lg"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <Pill className="w-5 h-5 text-purple-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold">Metformin 500mg</div>
-                            <div className="text-sm text-gray-500">Morning dose</div>
-                          </div>
+                      {medicationRegimens.length > 0 ? (
+                        medicationRegimens.map((regimen) => {
+                          const isTakenToday = medicationLogs.some(log => 
+                            log.regimenId === regimen.id && 
+                            formatDate(log.takenAt) === 'Today'
+                          );
+                          
+                          return (
+                            <Button 
+                              key={regimen.id}
+                              variant="outline" 
+                              className="w-full h-16 justify-between text-left rounded-xl border-2 border-purple-300 bg-white hover:bg-purple-50 shadow-lg"
+                              onClick={() => !isTakenToday && handleLogMedication(regimen.id)}
+                              disabled={isTakenToday}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                  <Pill className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <div>
+                                  <div className="font-semibold">{regimen.medicationName}</div>
+                                  <div className="text-sm text-gray-500">{regimen.dosage} - {regimen.frequency}</div>
+                                </div>
+                              </div>
+                              {isTakenToday ? (
+                                <CheckCircle className="w-6 h-6 text-green-600" />
+                              ) : (
+                                <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
+                              )}
+                            </Button>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                          <p>No medications found</p>
+                          <p className="text-sm">Ask your doctor to add your medications</p>
                         </div>
-                        <CheckCircle className="w-6 h-6 text-green-600" />
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        className="w-full h-16 justify-between text-left rounded-xl border-2 border-purple-300 bg-white hover:bg-purple-50 shadow-lg"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <Pill className="w-5 h-5 text-purple-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold">Insulin (Long-acting)</div>
-                            <div className="text-sm text-gray-500">Evening dose</div>
-                          </div>
-                        </div>
-                        <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
-                      </Button>
+                      )}
                     </div>
                     
                     <Button className="w-full h-14 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-xl shadow-lg">
@@ -465,6 +760,31 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       <textarea 
                         placeholder="e.g., Feeling dizzy after lunch, slight headache, more tired than usual..."
                         className="w-full h-24 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none"
+                        value={symptomDescription}
+                        onChange={(e) => setSymptomDescription(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block font-semibold mb-3 text-gray-800">Severity</label>
+                      <select 
+                        className="w-full h-12 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg"
+                        value={symptomSeverity}
+                        onChange={(e) => setSymptomSeverity(e.target.value)}
+                      >
+                        <option value="Mild">Mild</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Severe">Severe</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block font-semibold mb-3 text-gray-800">Additional Notes (Optional)</label>
+                      <textarea 
+                        placeholder="Any additional details..."
+                        className="w-full h-20 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none"
+                        value={symptomNotesInput}
+                        onChange={(e) => setSymptomNotesInput(e.target.value)}
                       />
                     </div>
                     
@@ -472,34 +792,70 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       <p className="font-semibold text-gray-800">Quick options:</p>
                       <div className="grid grid-cols-2 gap-3">
                         <Button 
+                          type="button"
                           variant="outline" 
                           className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                          onClick={() => setSymptomDescription('Feeling tired')}
                         >
                           😴 Tired
                         </Button>
                         <Button 
+                          type="button"
                           variant="outline" 
                           className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                          onClick={() => setSymptomDescription('Feeling nauseous')}
                         >
                           🤢 Nauseous
                         </Button>
                         <Button 
+                          type="button"
                           variant="outline" 
                           className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                          onClick={() => setSymptomDescription('Feeling dizzy')}
                         >
                           😵‍💫 Dizzy
                         </Button>
                         <Button 
+                          type="button"
                           variant="outline" 
                           className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                          onClick={() => setSymptomDescription('Feeling unwell')}
                         >
                           🤒 Unwell
                         </Button>
                       </div>
                     </div>
                     
-                    <Button className="w-full h-14 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 rounded-xl shadow-lg">
-                      📝 Log Symptoms
+                    <Button 
+                      className="w-full h-14 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 rounded-xl shadow-lg"
+                      disabled={!symptomDescription || isLoading}
+                      onClick={async () => {
+                        if (!currentUser?.id || !symptomDescription) {
+                          alert('Please enter symptom description');
+                          return;
+                        }
+                        setIsLoading(true);
+                        try {
+                          await logSymptom(currentUser.id, {
+                            symptom: symptomDescription,
+                            severity: symptomSeverity,
+                            notes: symptomNotesInput || undefined,
+                            occurredAt: new Date().toISOString()
+                          });
+                          setSymptomDescription('');
+                          setSymptomSeverity('Mild');
+                          setSymptomNotesInput('');
+                          setQuickLogType(null);
+                          alert('Symptom logged successfully!');
+                        } catch (error) {
+                          console.error('Error logging symptom:', error);
+                          alert('Failed to log symptom. Please try again.');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                    >
+                      {isLoading ? '⏳ Saving...' : '📝 Log Symptoms'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -520,7 +876,7 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
             <img src={logoImage} alt="DiaTrack Logo" className="w-full h-full object-contain" />
           </div>
           <div className="mt-4">
-            <h1 className="text-2xl font-semibold text-gray-900">{getGreeting()}, Juan! 👋</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">{getGreeting()}, {currentUser?.fullName?.split(' ')[0] || 'User'}! 👋</h1>
             <p className="text-gray-600">{getCurrentDate()}</p>
           </div>
         </div>
@@ -537,25 +893,26 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
       {/* Most Recent Reading Card */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200 shadow-lg">
         <CardContent className="pt-6">
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center space-x-2">
-              <Droplets className="w-6 h-6 text-blue-600" />
-              <span className="text-blue-800 font-medium">Most Recent Reading</span>
-            </div>
-            <div className="text-6xl font-bold text-blue-600">{todaysReadings[todaysReadings.length - 1].value}</div>
-            <p className="text-blue-700 text-xl">mg/dL</p>
-            <div className="flex items-center justify-center space-x-2">
-              <Badge className={`text-base px-4 py-1 ${
-                todaysReadings[todaysReadings.length - 1].status === 'good' 
-                  ? 'bg-green-100 text-green-800 border-green-200' 
-                  : todaysReadings[todaysReadings.length - 1].status === 'high'
-                  ? 'bg-red-100 text-red-800 border-red-200'
-                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-              }`}>
-                {todaysReadings[todaysReadings.length - 1].context}
-              </Badge>
-            </div>
-            <p className="text-blue-600 text-sm">{todaysReadings[todaysReadings.length - 1].time}</p>
+          {todaysReadings.length > 0 ? (
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center space-x-2">
+                <Droplets className="w-6 h-6 text-blue-600" />
+                <span className="text-blue-800 font-medium">Most Recent Reading</span>
+              </div>
+              <div className="text-6xl font-bold text-blue-600">{todaysReadings[todaysReadings.length - 1].value}</div>
+              <p className="text-blue-700 text-xl">mg/dL</p>
+              <div className="flex items-center justify-center space-x-2">
+                <Badge className={`text-base px-4 py-1 ${
+                  todaysReadings[todaysReadings.length - 1].status === 'good' 
+                    ? 'bg-green-100 text-green-800 border-green-200' 
+                    : todaysReadings[todaysReadings.length - 1].status === 'high'
+                    ? 'bg-red-100 text-red-800 border-red-200'
+                    : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                }`}>
+                  {todaysReadings[todaysReadings.length - 1].context}
+                </Badge>
+              </div>
+              <p className="text-blue-600 text-sm">{todaysReadings[todaysReadings.length - 1].time}</p>
             
             <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-blue-200">
               <div className="text-center">
@@ -571,7 +928,14 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                 <p className="text-sm text-gray-600">Day Streak</p>
               </div>
             </div>
-          </div>
+            </div>
+          ) : (
+            <div className="text-center space-y-4 py-8">
+              <Droplets className="w-16 h-16 text-blue-300 mx-auto" />
+              <p className="text-blue-600 text-lg">No readings yet today</p>
+              <p className="text-blue-500 text-sm">Log your first glucose reading!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -669,26 +1033,54 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   );
 
   const TrendsTab = () => {
-    // Mock data for summaries
-    const sevenDaySummary = [
-      { metric: 'Average Glucose', value: '142 mg/dL', status: 'good' },
-      { metric: 'Time in Range', value: '68%', status: 'good' },
-      { metric: 'Low Events', value: '2', status: 'warning' },
-      { metric: 'High Events', value: '5', status: 'warning' },
-      { metric: 'Meals Logged', value: '18', status: 'good' },
-      { metric: 'Medications Taken', value: '13 / 14', status: 'good' },
-      { metric: 'Readings Logged', value: '21', status: 'good' }
-    ];
+    // Calculate 7-day and 30-day summaries from backend data
+    const sevenDaySummary = useMemo(() => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const recentReadings = glucoseReadings.filter(r => new Date(r.measuredAt) >= sevenDaysAgo);
+      const recentMeals = meals.filter(m => new Date(m.loggedAt) >= sevenDaysAgo);
+      const values = recentReadings.map(r => Number(r.valueMgdl));
+      
+      const avg = values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+      const inRange = values.length > 0 ? Math.round((values.filter(v => v >= 70 && v <= 180).length / values.length) * 100) : 0;
+      const lowEvents = values.filter(v => v < 70).length;
+      const highEvents = values.filter(v => v > 180).length;
+      
+      return [
+        { metric: 'Average Glucose', value: `${avg} mg/dL`, status: avg >= 70 && avg <= 180 ? 'good' : 'warning' },
+        { metric: 'Time in Range', value: `${inRange}%`, status: inRange >= 70 ? 'good' : 'warning' },
+        { metric: 'Low Events', value: `${lowEvents}`, status: lowEvents > 0 ? 'warning' : 'good' },
+        { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'warning' : 'good' },
+        { metric: 'Meals Logged', value: `${recentMeals.length}`, status: 'good' },
+        { metric: 'Medications Taken', value: '0 / 0', status: 'good' }, // TODO: Connect medication API
+        { metric: 'Readings Logged', value: `${recentReadings.length}`, status: 'good' }
+      ];
+    }, [glucoseReadings, meals]);
 
-    const thirtyDaySummary = [
-      { metric: 'Average Glucose', value: '145 mg/dL', status: 'good' },
-      { metric: 'Time in Range', value: '65%', status: 'good' },
-      { metric: 'Low Events', value: '8', status: 'warning' },
-      { metric: 'High Events', value: '18', status: 'warning' },
-      { metric: 'Meals Logged', value: '72', status: 'good' },
-      { metric: 'Medications Taken', value: '56 / 60', status: 'good' },
-      { metric: 'Readings Logged', value: '87', status: 'good' }
-    ];
+    const thirtyDaySummary = useMemo(() => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentReadings = glucoseReadings.filter(r => new Date(r.measuredAt) >= thirtyDaysAgo);
+      const recentMeals = meals.filter(m => new Date(m.loggedAt) >= thirtyDaysAgo);
+      const values = recentReadings.map(r => Number(r.valueMgdl));
+      
+      const avg = values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+      const inRange = values.length > 0 ? Math.round((values.filter(v => v >= 70 && v <= 180).length / values.length) * 100) : 0;
+      const lowEvents = values.filter(v => v < 70).length;
+      const highEvents = values.filter(v => v > 180).length;
+      
+      return [
+        { metric: 'Average Glucose', value: `${avg} mg/dL`, status: avg >= 70 && avg <= 180 ? 'good' : 'warning' },
+        { metric: 'Time in Range', value: `${inRange}%`, status: inRange >= 70 ? 'good' : 'warning' },
+        { metric: 'Low Events', value: `${lowEvents}`, status: lowEvents > 0 ? 'warning' : 'good' },
+        { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'warning' : 'good' },
+        { metric: 'Meals Logged', value: `${recentMeals.length}`, status: 'good' },
+        { metric: 'Medications Taken', value: '0 / 0', status: 'good' }, // TODO: Connect medication API
+        { metric: 'Readings Logged', value: `${recentReadings.length}`, status: 'good' }
+      ];
+    }, [glucoseReadings, meals]);
 
     const getRowColor = (status: string) => {
       switch (status) {
@@ -795,7 +1187,7 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                 <CheckCircle className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1">
-                <p className="text-green-900">Great progress! Your glucose levels are trending well. Keep up the good work with your meal logging and medication adherence.</p>
+                <p className="text-green-900">{getGlucoseTrendMessage()}</p>
               </div>
             </div>
           </CardContent>
@@ -879,46 +1271,81 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
         </CardContent>
       </Card>
 
-      {/* Previous Medications */}
+{/* Previous Medications */}
+<Card className="shadow-lg">
+<CardHeader>
+<CardTitle className="flex items-center space-x-2">
+<Pill className="w-5 h-5 text-purple-600" />
+<span>Medication History</span>
+</CardTitle>
+</CardHeader>
+<CardContent className="space-y-3">
+{medicationLogs.length > 0 ? (
+medicationLogs.slice(0, 10).map((log) => {
+const regimen = medicationRegimens.find(r => r.id === log.regimenId);
+return (
+<div key={log.id} className="p-4 rounded-xl border bg-purple-50 border-purple-200">
+<div className="flex items-center justify-between">
+<div className="flex items-center space-x-3">
+<div className="w-10 h-10 rounded-full flex items-center justify-center bg-purple-100">
+<Pill className="w-5 h-5 text-purple-600" />
+</div>
+<div>
+<div className="font-medium text-gray-900">{regimen?.medicationName || 'Unknown Medication'}</div>
+<div className="text-sm text-gray-600">{formatDate(log.takenAt)} • {formatTime(log.takenAt)}</div>
+{regimen && <div className="text-sm text-gray-500">{regimen.dosage}</div>}
+</div>
+</div>
+<Badge className="bg-green-100 text-green-800">
+Taken
+</Badge>
+</div>
+</div>
+);
+})
+) : (
+<div className="text-center py-8 text-gray-500">
+<Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+<p>No medication logs yet</p>
+</div>
+)}
+        </CardContent>
+      </Card>
+
+      {/* Symptoms History */}
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Pill className="w-5 h-5 text-purple-600" />
-            <span>Previous Medications</span>
+            <Heart className="w-5 h-5 text-orange-600" />
+            <span>Symptoms History</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {previousMedications.map((med, index) => (
-            <div key={index} className={`p-4 rounded-xl border ${
-              med.status === 'taken' 
-                ? 'bg-purple-50 border-purple-200' 
-                : 'bg-red-50 border-red-200'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    med.status === 'taken' ? 'bg-purple-100' : 'bg-red-100'
+          {symptomNotes.length > 0 ? (
+            symptomNotes.slice(0, 10).map((note) => (
+              <div key={note.id} className="p-4 rounded-xl border bg-orange-50 border-orange-200">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{note.symptom}</div>
+                    <div className="text-sm text-gray-600 mt-1">{formatDate(note.occurredAt)} • {formatTime(note.occurredAt)}</div>
+                    {note.notes && <p className="text-sm text-gray-700 mt-2">{note.notes}</p>}
+                  </div>
+                  <Badge className={`ml-2 ${
+                    note.severity === 'Severe' ? 'bg-red-100 text-red-800' :
+                    note.severity === 'Moderate' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
                   }`}>
-                    <Pill className={`w-5 h-5 ${
-                      med.status === 'taken' ? 'text-purple-600' : 'text-red-600'
-                    }`} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{med.medication}</div>
-                    <div className="text-sm text-gray-600">{med.date} • {med.time}</div>
-                    <div className="text-sm text-gray-500">{med.dose}</div>
-                  </div>
+                    {note.severity}
+                  </Badge>
                 </div>
-                <Badge className={
-                  med.status === 'taken' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }>
-                  {med.status === 'taken' ? '✓ Taken' : '✗ Missed'}
-                </Badge>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Heart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>No symptoms logged yet</p>
             </div>
-          ))}
+          )}
         </CardContent>
       </Card>
     </div>
@@ -932,7 +1359,7 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
           <div className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
             <User className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-semibold">Juan Dela Cruz</h2>
+          <h2 className="text-2xl font-semibold">{currentUser?.fullName || 'User'}</h2>
           <p className="text-gray-600">Managing diabetes since 2018</p>
           <Badge className="mt-2 bg-green-100 text-green-800">On track this week</Badge>
         </div>
@@ -977,11 +1404,15 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
               <div className="text-sm text-gray-500">Update your health info</div>
             </div>
           </Button>
-          <Button variant="outline" className="w-full h-16 justify-start text-left rounded-xl">
+          <Button 
+            variant="outline" 
+            className="w-full h-16 justify-start text-left rounded-xl"
+            onClick={() => alert('Reminder settings are automatically managed based on your medication schedule. The system will send you reminders for your medications at the scheduled times.')}
+          >
             <Bell className="w-6 h-6 mr-4 text-purple-600" />
             <div>
               <div className="font-medium">Reminder Settings</div>
-              <div className="text-sm text-gray-500">3 times daily</div>
+              <div className="text-sm text-gray-500">Auto-managed</div>
             </div>
           </Button>
           <Button 
@@ -995,14 +1426,22 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
               <div className="text-sm text-gray-500">View schedule & contact</div>
             </div>
           </Button>
-          <Button variant="outline" className="w-full h-16 justify-start text-left rounded-xl">
+          <Button 
+            variant="outline" 
+            className="w-full h-16 justify-start text-left rounded-xl"
+            onClick={() => setShowEducationalResources(true)}
+          >
             <BookOpen className="w-6 h-6 mr-4 text-green-600" />
             <div>
               <div className="font-medium">Educational Resources</div>
               <div className="text-sm text-gray-500">Tips & guides</div>
             </div>
           </Button>
-          <Button variant="outline" className="w-full h-16 justify-start text-left rounded-xl">
+          <Button 
+            variant="outline" 
+            className="w-full h-16 justify-start text-left rounded-xl"
+            onClick={handleExportReport}
+          >
             <Calendar className="w-6 h-6 mr-4 text-orange-600" />
             <div>
               <div className="font-medium">Export Report</div>
@@ -1027,6 +1466,11 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   // If medical profile is open, show it fullscreen
   if (showMedicalProfile) {
     return <PatientMedicalProfile onClose={() => setShowMedicalProfile(false)} />;
+  }
+
+  // If educational resources is open, show it fullscreen
+  if (showEducationalResources) {
+    return <EducationalResources onClose={() => setShowEducationalResources(false)} />;
   }
 
   return (

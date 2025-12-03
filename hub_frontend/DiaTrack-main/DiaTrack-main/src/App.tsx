@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { LoginInterface } from './components/LoginInterface';
-import { RegistrationPage } from './components/RegistrationPage';
+import { Registration } from './components/Registration';
 import { PatientDashboard } from './components/PatientDashboard';
 import { ClinicianDashboard } from './components/ClinicianDashboard';
+import { getCurrentUser, logout as authLogout } from './api/auth';
 
 type ViewType = 'login' | 'register' | 'patient' | 'clinician';
 
@@ -11,21 +12,23 @@ export default function App() {
 
   // Check for remembered session on mount
   useEffect(() => {
-    const rememberedUser = localStorage.getItem('currentUser');
+    const user = getCurrentUser();
     const rememberMe = localStorage.getItem('rememberMe') === 'true';
     
-    if (rememberedUser && rememberMe) {
-      setCurrentView(rememberedUser as 'patient' | 'clinician');
+    if (user && rememberMe) {
+      const userRole = user.role.toLowerCase();
+      if (userRole === 'patient' || userRole === 'clinician') {
+        setCurrentView(userRole as 'patient' | 'clinician');
+      }
     }
   }, []);
 
   const handleLogin = (userType: 'patient' | 'clinician') => {
-    localStorage.setItem('currentUser', userType);
     setCurrentView(userType);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    authLogout();
     setCurrentView('login');
   };
 
@@ -53,9 +56,8 @@ export default function App() {
           />
         )}
         {currentView === 'register' && (
-          <RegistrationPage 
+          <Registration 
             onBack={handleBackToLogin}
-            onRegister={handleRegistrationComplete}
           />
         )}
         {currentView === 'patient' && <PatientDashboard onLogout={handleLogout} />}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -8,6 +8,12 @@ import { ClinicianMessaging } from './ClinicianMessaging';
 import { ClinicianClinicSchedule } from './ClinicianClinicSchedule';
 import { ClinicSettings } from './ClinicSettings';
 import { ClinicianAppointments } from './ClinicianAppointments';
+import { getCurrentUser } from '../api/auth';
+import { getClinicianPatients, getClinicianNotes, createClinicianNote, type PatientClinicianLink, type ClinicianNote } from '../api/clinician';
+import { getGlucoseReadings, type GlucoseReading } from '../api/glucose';
+import { getAlerts, type Alert } from '../api/alerts';
+import { downloadPatientReportPdf, exportPatientReportPdf } from '../api/export';
+import { getPatientProfile } from '../api/patient';
 import { 
   Activity, 
   AlertTriangle,
@@ -34,17 +40,132 @@ interface ClinicianDashboardProps {
   onLogout: () => void;
 }
 
+interface PatientData extends PatientClinicianLink {
+  lastReading?: number;
+  lastReadingTime?: string;
+  timeInRange?: number;
+  trend?: 'up' | 'down' | 'stable';
+  recentReadings?: number[];
+  alerts?: Alert[];
+  notes?: string;
+  phone?: string;
+  email?: string;
+}
+
 export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
   const [showMessaging, setShowMessaging] = useState(false);
   const [showClinicSchedule, setShowClinicSchedule] = useState(false);
   const [showClinicSettings, setShowClinicSettings] = useState(false);
   const [showAppointments, setShowAppointments] = useState(false);
+  const [patients, setPatients] = useState<PatientData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [patientNotes, setPatientNotes] = useState<Record<string, string>>({});
   
   // Ref to store scroll position
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollPosition = useRef<number>(0);
+
+  // Fetch current user and patients on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+        
+        if (user?.id) {
+          // Fetch patients linked to this clinician
+          const patientLinks = await getClinicianPatients(user.id);
+          
+          // Fetch additional data for each patient
+          const patientsWithData = await Promise.all(
+            patientLinks.map(async (link) => {
+              try {
+                // Fetch glucose readings
+                const readings = await getGlucoseReadings(link.patientId);
+                const sortedReadings = readings.sort((a: GlucoseReading, b: GlucoseReading) => 
+                  new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime()
+                );
+                
+                // Fetch alerts
+                const alerts = await getAlerts(link.patientId);
+                
+                // Fetch notes
+                const notes = await getClinicianNotes(link.id);
+                const latestNote = notes.length > 0 ? notes[notes.length - 1].noteText : '';
+                
+                // Fetch patient profile for phone/email
+                let patientPhone = 'N/A';
+                let patientEmail = 'N/A';
+                try {
+                  const patientProfile = await getPatientProfile(link.patientId);
+                  patientPhone = patientProfile.phone || 'N/A';
+                  patientEmail = patientProfile.email || 'N/A';
+                } catch (err) {
+                  console.error('Error fetching patient profile:', err);
+                }
+                
+                // Calculate stats
+                const lastReading = sortedReadings[0]?.valueMgdl;
+                const lastReadingTime = sortedReadings[0] ? getTimeAgo(sortedReadings[0].measuredAt) : 'N/A';
+                const recentReadings = sortedReadings.slice(0, 5).map((r: GlucoseReading) => r.valueMgdl);
+                
+                // Calculate time in range (70-180 mg/dL)
+                const inRangeCount = readings.filter((r: GlucoseReading) => r.valueMgdl >= 70 && r.valueMgdl <= 180).length;
+                const timeInRange = readings.length > 0 ? Math.round((inRangeCount / readings.length) * 100) : 0;
+                
+                // Determine trend
+                let trend: 'up' | 'down' | 'stable' = 'stable';
+                if (recentReadings.length >= 2) {
+                  const avg1 = recentReadings.slice(0, 2).reduce((a: number, b: number) => a + b, 0) / 2;
+                  const avg2 = recentReadings.slice(2, 4).reduce((a: number, b: number) => a + b, 0) / 2;
+                  if (avg1 > avg2 + 20) trend = 'up';
+                  else if (avg1 < avg2 - 20) trend = 'down';
+                }
+                
+                return {
+                  ...link,
+                  lastReading,
+                  lastReadingTime,
+                  timeInRange,
+                  trend,
+                  recentReadings,
+                  alerts,
+                  notes: latestNote,
+                  phone: patientPhone,
+                  email: patientEmail,
+                } as PatientData;
+              } catch (error) {
+                console.error(`Error fetching data for patient ${link.patientId}:`, error);
+                return {
+                  ...link,
+                  lastReading: 0,
+                  lastReadingTime: 'N/A',
+                  timeInRange: 0,
+                  trend: 'stable' as const,
+                  recentReadings: [],
+                  alerts: [],
+                  notes: '',
+                  phone: 'N/A',
+                  email: 'N/A',
+                } as PatientData;
+              }
+            })
+          );
+          
+          setPatients(patientsWithData);
+        }
+      } catch (error) {
+        console.error('Error fetching clinician data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   // Save scroll position before navigating away
   useEffect(() => {
@@ -54,72 +175,33 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
       container.scrollTop = savedScrollPosition.current;
     }
   }, [showMessaging, showClinicSchedule, showClinicSettings, showAppointments]);
+  
+  // Helper function to calculate time ago
+  const getTimeAgo = (timestamp: string): string => {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} days ago`;
+  };
 
-  // Mock patient data
-  const patients = [
-    {
-      id: 1,
-      name: 'Sheianne Seblante',
-      age: 45,
-      lastReading: 110,
-      lastReadingTime: '15 min ago',
-      timeInRange: 68,
-      trend: 'stable',
-      phone: '(555) 123-4567',
-      email: 'sheianne.s@email.com',
-      nextAppointment: '2025-10-05',
-      recentReadings: [125, 180, 110, 118, 122],
-      alerts: ['High reading after lunch'],
-      notes: 'Patient reports stress at work affecting readings'
-    },
-    {
-      id: 2,
-      name: 'Jose Reyes',
-      age: 62,
-      lastReading: 95,
-      lastReadingTime: '30 min ago',
-      timeInRange: 85,
-      trend: 'stable',
-      phone: '(555) 234-5678',
-      email: 'jose.r@email.com',
-      nextAppointment: '2025-10-12',
-      recentReadings: [98, 95, 102, 89, 94],
-      alerts: [],
-      notes: 'Excellent adherence to medication schedule'
-    },
-    {
-      id: 3,
-      name: 'Arianne Acosta',
-      age: 38,
-      lastReading: 250,
-      lastReadingTime: '45 min ago',
-      timeInRange: 45,
-      trend: 'up',
-      phone: '(555) 345-6789',
-      email: 'arianne.a@email.com',
-      nextAppointment: '2025-10-03',
-      recentReadings: [220, 250, 190, 280, 245],
-      alerts: ['Frequent high readings', 'Missed multiple medications', 'Low time in range'],
-      notes: 'Needs medication adjustment and counseling'
-    },
-    {
-      id: 4,
-      name: 'Joy Arellano',
-      age: 55,
-      lastReading: 120,
-      lastReadingTime: '1 hour ago',
-      timeInRange: 72,
-      trend: 'stable',
-      phone: '(555) 456-7890',
-      email: 'joy.a@email.com',
-      nextAppointment: '2025-10-15',
-      recentReadings: [115, 120, 125, 118, 122],
-      alerts: [],
-      notes: 'Stable readings, good progress'
-    }
-  ];
+  // Filter and sort patients
+  const filteredPatients = useMemo(() => {
+    return patients
+      .filter(patient =>
+        patient.patientName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => a.patientName.localeCompare(b.patientName));
+  }, [patients, searchTerm]);
 
-  const getTrendIcon = (trend: string) => {
+  const getTrendIcon = (trend?: string) => {
     switch (trend) {
       case 'up': return <TrendingUp className="w-4 h-4 text-red-500" />;
       case 'down': return <TrendingDown className="w-4 h-4 text-blue-500" />;
@@ -128,13 +210,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
     }
   };
 
-  const filteredPatients = patients
-    .filter(patient =>
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => a.id - b.id);
-
-  const PatientDetailModal = ({ patient }: { patient: any }) => (
+  const PatientDetailModal = ({ patient }: { patient: PatientData }) => (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-end justify-center">
       <div className="bg-white w-full max-w-[375px] h-[700px] rounded-t-3xl overflow-hidden animate-in slide-in-from-bottom duration-300 shadow-2xl">
         {/* Handle bar for swipe indication */}
@@ -145,9 +221,9 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
         <div className="px-6 py-4">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-3xl font-bold">{patient.name}</h2>
+              <h2 className="text-3xl font-bold">{patient.patientName}</h2>
               <div className="flex items-center space-x-2 mt-1">
-                <span className="text-gray-600">Age {patient.age} • ID #{patient.id}</span>
+                <span className="text-gray-600">Patient ID: {patient.patientId.substring(0, 8)}...</span>
               </div>
             </div>
             <Button 
@@ -175,6 +251,11 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 <Button 
                   variant="outline" 
                   className="w-full h-16 justify-start text-left rounded-xl border-2 hover:bg-blue-50"
+                  onClick={() => {
+                    if (patient.phone && patient.phone !== 'N/A') {
+                      window.location.href = `tel:${patient.phone}`;
+                    }
+                  }}
                 >
                   <Phone className="w-6 h-6 mr-4 text-blue-600" />
                   <div>
@@ -185,6 +266,11 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 <Button 
                   variant="outline" 
                   className="w-full h-16 justify-start text-left rounded-xl border-2 hover:bg-green-50"
+                  onClick={() => {
+                    if (patient.email && patient.email !== 'N/A') {
+                      window.location.href = `mailto:${patient.email}`;
+                    }
+                  }}
                 >
                   <Mail className="w-6 h-6 mr-4 text-green-600" />
                   <div>
@@ -196,7 +282,15 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   <Calendar className="w-6 h-6 text-orange-600" />
                   <div>
                     <div className="font-medium">Next appointment</div>
-                    <div className="text-sm text-gray-600">{patient.nextAppointment}</div>
+                    <div className="text-sm text-gray-600">
+                      {patient.nextAppointmentAt 
+                        ? new Date(patient.nextAppointmentAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })
+                        : 'Not scheduled'}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -214,18 +308,18 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 <div className="grid grid-cols-1 gap-6">
                   <Card className="bg-gradient-to-r from-red-50 to-rose-100 border-red-200">
                     <CardContent className="pt-6 text-center">
-                      <div className="text-5xl font-bold text-red-600">{patient.lastReading}</div>
+                      <div className="text-5xl font-bold text-red-600">{patient.lastReading || 'N/A'}</div>
                       <p className="text-lg font-medium text-red-800 mt-2">Last Reading</p>
-                      <p className="text-sm text-red-600">{patient.lastReadingTime}</p>
+                      <p className="text-sm text-red-600">{patient.lastReadingTime || 'N/A'}</p>
                       {getTrendIcon(patient.trend)}
                     </CardContent>
                   </Card>
                   
                   <Card className="bg-gradient-to-r from-blue-50 to-cyan-100 border-blue-200">
                     <CardContent className="pt-6 text-center">
-                      <div className="text-5xl font-bold text-blue-600">{patient.timeInRange}%</div>
+                      <div className="text-5xl font-bold text-blue-600">{patient.timeInRange || 0}%</div>
                       <p className="text-lg font-medium text-blue-800 mt-2">Time in Range</p>
-                      <Progress value={patient.timeInRange} className="w-full h-4 mt-4" />
+                      <Progress value={patient.timeInRange || 0} className="w-full h-4 mt-4" />
                     </CardContent>
                   </Card>
                 </div>
@@ -233,26 +327,30 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
             </Card>
 
             {/* Alerts */}
-            {patient.alerts.length > 0 && (
-              <Card className="border-red-200 bg-gradient-to-r from-red-50 to-rose-100 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-xl text-red-800 flex items-center space-x-2">
-                    <AlertTriangle className="w-6 h-6" />
-                    <span>Active Alerts ({patient.alerts.length})</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card className={`shadow-lg ${patient.alerts && patient.alerts.length > 0 ? 'border-red-200 bg-gradient-to-r from-red-50 to-rose-100' : ''}`}>
+              <CardHeader>
+                <CardTitle className={`text-xl flex items-center space-x-2 ${patient.alerts && patient.alerts.length > 0 ? 'text-red-800' : 'text-gray-700'}`}>
+                  <AlertTriangle className="w-6 h-6" />
+                  <span>Active Alerts ({patient.alerts?.length || 0})</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {patient.alerts && patient.alerts.length > 0 ? (
                   <div className="space-y-3">
-                    {patient.alerts.map((alert: string, index: number) => (
+                    {patient.alerts.map((alert: Alert, index: number) => (
                       <div key={index} className="flex items-start space-x-3 p-4 bg-white rounded-xl border border-red-200">
                         <AlertTriangle className="w-6 h-6 text-red-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-lg text-red-700 font-medium">{alert}</span>
+                        <span className="text-lg text-red-700 font-medium">{alert.message}</span>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border">
+                    <p className="text-lg text-gray-500 text-center">No active alerts</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Clinical Notes */}
             <Card className="shadow-lg">
@@ -264,14 +362,26 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="p-4 bg-gray-50 rounded-xl border">
-                  <p className="text-lg text-gray-800 leading-relaxed">{patient.notes}</p>
+                  <p className="text-lg text-gray-800 leading-relaxed">{patient.notes || 'No notes available'}</p>
                 </div>
               </CardContent>
             </Card>
 
             {/* Actions */}
             <div className="grid grid-cols-1 gap-4">
-              <Button className="h-18 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg">
+              <Button 
+                className="h-18 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg"
+                onClick={async () => {
+                  if (selectedPatient) {
+                    try {
+                      await downloadPatientReportPdf(selectedPatient.patientId, `${selectedPatient.patientName}_report.pdf`);
+                    } catch (error) {
+                      console.error('Error downloading report:', error);
+                      alert('Export functionality is not yet fully implemented on the backend. Please try again later.');
+                    }
+                  }
+                }}
+              >
                 <Download className="w-6 h-6 mr-3" />
                 <div className="text-left">
                   <div className="text-lg font-semibold">Export Report</div>
@@ -292,7 +402,17 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   <div className="text-sm text-gray-500">Quick patient message</div>
                 </div>
               </Button>
-              <Button variant="outline" className="h-18 border-2 rounded-xl shadow-lg hover:bg-green-50">
+              <Button 
+                variant="outline" 
+                className="h-18 border-2 rounded-xl shadow-lg hover:bg-green-50"
+                onClick={() => {
+                  if (patient.phone && patient.phone !== 'N/A') {
+                    window.location.href = `tel:${patient.phone}`;
+                  } else {
+                    alert('Phone number not available for this patient');
+                  }
+                }}
+              >
                 <Phone className="w-6 h-6 mr-3 text-green-600" />
                 <div className="text-left">
                   <div className="text-lg font-semibold">Call Patient</div>
@@ -313,7 +433,13 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
 
   // If clinic schedule is open, show it fullscreen
   if (showClinicSchedule) {
-    return <ClinicianClinicSchedule onClose={() => setShowClinicSchedule(false)} />;
+    return <ClinicianClinicSchedule 
+      onClose={() => setShowClinicSchedule(false)} 
+      onNavigateToSettings={() => {
+        setShowClinicSchedule(false);
+        setShowClinicSettings(true);
+      }}
+    />;
   }
 
   // If clinic settings is open, show it fullscreen
@@ -326,6 +452,20 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
     return <ClinicianAppointments onClose={() => setShowAppointments(false)} />;
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="h-full bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading patient data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
   return (
     <div className="h-full bg-gray-50 flex flex-col overflow-hidden pt-11">
       {/* Header */}
@@ -334,7 +474,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
           <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Patient Dashboard</h1>
-              <p className="text-sm text-gray-500">Wednesday, October 1, 2025</p>
+              <p className="text-sm text-gray-500">{today}</p>
             </div>
             <div className="flex items-center space-x-2">
               <Button 
@@ -402,27 +542,27 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                       <User className="w-5 h-5 text-gray-600" />
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-900">{patient.name}</h3>
-                      <p className="text-sm text-gray-500">Age {patient.age}</p>
+                      <h3 className="font-medium text-gray-900">{patient.patientName}</h3>
+                      <p className="text-sm text-gray-500">ID: {patient.patientId.substring(0, 8)}...</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xl font-bold">{patient.lastReading}</span>
+                      <span className="text-xl font-bold">{patient.lastReading || 'N/A'}</span>
                       {getTrendIcon(patient.trend)}
                     </div>
-                    <p className="text-xs text-gray-500">{patient.lastReadingTime}</p>
+                    <p className="text-xs text-gray-500">{patient.lastReadingTime || 'N/A'}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900">{patient.timeInRange}%</div>
+                    <div className="text-sm font-medium text-gray-900">{patient.timeInRange || 0}%</div>
                     <p className="text-xs text-gray-500">Time in Range</p>
                   </div>
                 </div>
 
-                {patient.alerts.length > 0 && (
+                {patient.alerts && patient.alerts.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <div className="flex items-center space-x-2">
                       <AlertTriangle className="w-4 h-4 text-red-500" />

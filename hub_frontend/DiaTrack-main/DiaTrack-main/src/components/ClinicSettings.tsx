@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { ArrowLeft, MapPin, Clock, Phone, Mail, User, Save, Plus, Trash2, Check } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { getMyClinicDetails, updateMyClinicDetails, ClinicDetails } from '../api/clinic';
+import { getCurrentUser } from '../api/auth';
 
 interface ClinicSettingsProps {
   onClose: () => void;
@@ -16,6 +18,17 @@ interface ClinicSchedule {
 }
 
 export function ClinicSettings({ onClose }: ClinicSettingsProps) {
+  // Clinic details from backend
+  const [clinicName, setClinicName] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [scheduleDays, setScheduleDays] = useState('');
+  const [scheduleHours, setScheduleHours] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  
   // Main Clinic Schedule
   const [mainClinicSchedule, setMainClinicSchedule] = useState<ClinicSchedule[]>([
     { day: 'Monday', startTime: '14:00', endTime: '18:00' },
@@ -41,6 +54,30 @@ export function ClinicSettings({ onClose }: ClinicSettingsProps) {
   const [newScheduleEndTime, setNewScheduleEndTime] = useState('17:00');
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  // Fetch clinic details on mount
+  useEffect(() => {
+    const fetchClinicDetails = async () => {
+      try {
+        setIsLoading(true);
+        const details = await getMyClinicDetails();
+        setClinicName(details.clinicName || '');
+        setAddress(details.address || '');
+        setPhone(details.contactPhone || '');
+        setContactPerson(details.contactPerson || '');
+        setContactPhone(details.contactPhone || '');
+        setScheduleDays(details.scheduleDays || '');
+        setScheduleHours(details.scheduleHours || '');
+      } catch (error) {
+        console.error('Error fetching clinic details:', error);
+        // If no details exist yet, that's okay - user can create them
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClinicDetails();
+  }, []);
 
   const openAddMainModal = () => {
     setAddModalType('main');
@@ -105,10 +142,35 @@ export function ClinicSettings({ onClose }: ClinicSettingsProps) {
     setSecondClinicSchedule(updated);
   };
 
-  const handleSave = () => {
-    setSuccessMessage('Clinic settings saved successfully!');
-    setShowSuccessPopup(true);
-    setTimeout(() => setShowSuccessPopup(false), 3000);
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Combine schedules into strings for backend
+      const mainScheduleStr = mainClinicSchedule.map(s => `${s.day}: ${s.startTime}-${s.endTime}`).join('; ');
+      const secondScheduleStr = secondClinicSchedule.map(s => `${s.day}: ${s.startTime}-${s.endTime}`).join('; ');
+      const combinedScheduleDays = [mainScheduleStr, secondScheduleStr].filter(s => s).join(' | ');
+      
+      await updateMyClinicDetails({
+        clinicName,
+        address,
+        scheduleDays: combinedScheduleDays,
+        scheduleHours: scheduleHours || '9:00 AM - 5:00 PM',
+        contactPerson,
+        contactPhone
+      });
+      
+      setSuccessMessage('Clinic settings saved successfully!');
+      setShowSuccessPopup(true);
+      setTimeout(() => setShowSuccessPopup(false), 3000);
+    } catch (error) {
+      console.error('Error saving clinic settings:', error);
+      setSuccessMessage('Failed to save clinic settings. Please try again.');
+      setShowSuccessPopup(true);
+      setTimeout(() => setShowSuccessPopup(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -148,7 +210,8 @@ export function ClinicSettings({ onClose }: ClinicSettingsProps) {
                 <Input 
                   placeholder="St. Mary's Medical Center"
                   className="h-12 border-2 border-blue-200 rounded-xl"
-                  defaultValue="St. Mary's Medical Center"
+                  value={clinicName}
+                  onChange={(e) => setClinicName(e.target.value)}
                 />
               </div>
               <div>
@@ -156,7 +219,8 @@ export function ClinicSettings({ onClose }: ClinicSettingsProps) {
                 <Input 
                   placeholder="123 Health Street"
                   className="h-12 border-2 border-blue-200 rounded-xl"
-                  defaultValue="123 Health Street, Metro Manila"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
                 />
               </div>
               <div>
@@ -164,7 +228,8 @@ export function ClinicSettings({ onClose }: ClinicSettingsProps) {
                 <Input 
                   placeholder="(02) 8123-4567"
                   className="h-12 border-2 border-blue-200 rounded-xl"
-                  defaultValue="(02) 8123-4567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
             </CardContent>
@@ -362,7 +427,8 @@ export function ClinicSettings({ onClose }: ClinicSettingsProps) {
                 <Input 
                   placeholder="Maria Santos"
                   className="h-12 border-2 border-indigo-200 rounded-xl"
-                  defaultValue="Maria Santos"
+                  value={contactPerson}
+                  onChange={(e) => setContactPerson(e.target.value)}
                 />
               </div>
               <div>
@@ -370,24 +436,21 @@ export function ClinicSettings({ onClose }: ClinicSettingsProps) {
                 <Input 
                   placeholder="+63 917 123 4567"
                   className="h-12 border-2 border-indigo-200 rounded-xl"
-                  defaultValue="+63 917 123 4567"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-2 text-gray-700">Email</label>
-                <Input 
-                  placeholder="secretary@clinic.com"
-                  className="h-12 border-2 border-indigo-200 rounded-xl"
-                  defaultValue="secretary@clinic.com"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Save Button */}
-          <Button className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 rounded-xl shadow-lg" onClick={handleSave}>
+          <Button 
+            className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 rounded-xl shadow-lg" 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
             <Save className="w-5 h-5 mr-2" />
-            Save Clinic Settings
+            {isSaving ? 'Saving...' : 'Save Clinic Settings'}
           </Button>
 
           {/* Success Popup */}
