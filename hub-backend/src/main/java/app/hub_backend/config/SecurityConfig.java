@@ -2,6 +2,7 @@ package app.hub_backend.config;
 
 import app.hub_backend.serviceImpl.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -26,6 +27,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
+    @Qualifier("corsConfigurationSource")
     private final CorsConfigurationSource corsConfigurationSource;
     private final JwtAuthFilter jwtAuthFilter; // [NEW] Inject the filter
 
