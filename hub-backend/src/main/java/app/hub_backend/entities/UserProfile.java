@@ -23,7 +23,7 @@ public class UserProfile {
 
     private LocalDate dob;
 
-    @Column(length = 1)
+    @Column(length = 10)
     private String sex; // 'F','M','X'
 
     @Column(nullable = false)
