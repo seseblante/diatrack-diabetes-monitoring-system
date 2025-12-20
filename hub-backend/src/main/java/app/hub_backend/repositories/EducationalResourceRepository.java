@@ -7,5 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface EducationalResourceRepository extends JpaRepository<EducationalResource, UUID> {
+
     List<EducationalResource> findByIsActiveTrueOrderByCategory();
 }
