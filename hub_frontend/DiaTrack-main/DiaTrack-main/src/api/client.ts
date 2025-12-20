@@ -1,6 +1,7 @@
 import { getAuthHeader } from './auth';
 
 // Base URL for all API calls - use environment variable if available, otherwise default
+// @ts-ignore
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
 /**

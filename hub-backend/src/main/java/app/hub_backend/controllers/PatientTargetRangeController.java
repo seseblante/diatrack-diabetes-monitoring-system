@@ -20,17 +20,23 @@ public class PatientTargetRangeController {
     private final PatientTargetRangeService targetService;
 
     @GetMapping
-    public ResponseEntity<List<PatientTargetRangeDto>> getTargetRanges(@PathVariable UUID patientId) {
-        List<PatientTargetRangeDto> targets = targetService.getTargetsByPatient(patientId);
+    public ResponseEntity<List<PatientTargetRangeDto>> getTargetRanges(
+            @PathVariable("patientId") UUID patientId   // ✅ FIXED
+    ) {
+        List<PatientTargetRangeDto> targets =
+                targetService.getTargetsByPatient(patientId);
+
         return ResponseEntity.ok(targets);
     }
 
     @PostMapping
     public ResponseEntity<PatientTargetRangeDto> createOrUpdateTargetRange(
-            @PathVariable UUID patientId,
-            @Valid @RequestBody PatientTargetRangeRequestDto request) {
+            @PathVariable("patientId") UUID patientId,  // ✅ FIXED
+            @Valid @RequestBody PatientTargetRangeRequestDto request
+    ) {
+        PatientTargetRangeDto updatedTarget =
+                targetService.createOrUpdateTarget(patientId, request);
 
-        PatientTargetRangeDto updatedTarget = targetService.createOrUpdateTarget(patientId, request);
-        return ResponseEntity.status(HttpStatus.OK).body(updatedTarget);
+        return ResponseEntity.ok(updatedTarget);
     }
 }

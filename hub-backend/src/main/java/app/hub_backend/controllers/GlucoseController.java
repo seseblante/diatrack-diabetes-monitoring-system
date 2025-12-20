@@ -21,14 +21,17 @@ public class GlucoseController {
 
     @PostMapping
     public ResponseEntity<GlucoseReadingDto> logGlucoseReading(
-            @PathVariable UUID patientId,
-            @Valid @RequestBody GlucoseLogRequestDto request) {
+            @PathVariable("patientId") UUID patientId,
+            @Valid @RequestBody GlucoseLogRequestDto request
+    ) {
         GlucoseReadingDto dto = glucoseService.logGlucoseReading(patientId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
     @GetMapping
-    public ResponseEntity<List<GlucoseReadingDto>> getGlucoseReadings(@PathVariable UUID patientId) {
+    public ResponseEntity<List<GlucoseReadingDto>> getGlucoseReadings(
+            @PathVariable("patientId") UUID patientId
+    ) {
         List<GlucoseReadingDto> dtos = glucoseService.getGlucoseReadingsForPatient(patientId);
         return ResponseEntity.ok(dtos);
     }

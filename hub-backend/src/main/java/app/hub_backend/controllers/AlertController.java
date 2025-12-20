@@ -17,13 +17,13 @@ public class AlertController {
     private final AlertService alertService;
 
     @GetMapping("/patient/{patientId}")
-    public ResponseEntity<List<AlertDto>> getAlertsForPatient(@PathVariable UUID patientId) {
+    public ResponseEntity<List<AlertDto>> getAlertsForPatient(@PathVariable("patientId") UUID patientId) {
         List<AlertDto> alerts = alertService.getOpenAlertsByPatient(patientId);
         return ResponseEntity.ok(alerts);
     }
 
     @PostMapping("/{alertId}/acknowledge")
-    public ResponseEntity<AlertDto> acknowledgeAlert(@PathVariable UUID alertId) {
+    public ResponseEntity<AlertDto> acknowledgeAlert(@PathVariable("alertId") UUID alertId) {
         AlertDto updatedAlert = alertService.acknowledgeAlert(alertId);
         return ResponseEntity.ok(updatedAlert);
     }

@@ -19,29 +19,38 @@ public class ClinicianNoteController {
     private final ClinicianNoteService clinicianNoteService;
 
     @GetMapping("/link/{patientClinicianLinkId}")
-    public ResponseEntity<List<ClinicianNoteDto>> getNotes(@PathVariable UUID patientClinicianLinkId) {
-        List<ClinicianNoteDto> notes = clinicianNoteService.getNotesForLink(patientClinicianLinkId);
+    public ResponseEntity<List<ClinicianNoteDto>> getNotes(
+            @PathVariable("patientClinicianLinkId") UUID patientClinicianLinkId
+    ) {
+        List<ClinicianNoteDto> notes =
+                clinicianNoteService.getNotesForLink(patientClinicianLinkId);
         return ResponseEntity.ok(notes);
     }
 
     @PostMapping("/link/{patientClinicianLinkId}")
     public ResponseEntity<ClinicianNoteDto> createNote(
-            @PathVariable UUID patientClinicianLinkId,
-            @Valid @RequestBody ClinicianNoteRequestDto request) {
-        ClinicianNoteDto newNote = clinicianNoteService.createNoteForLink(patientClinicianLinkId, request);
+            @PathVariable("patientClinicianLinkId") UUID patientClinicianLinkId,
+            @Valid @RequestBody ClinicianNoteRequestDto request
+    ) {
+        ClinicianNoteDto newNote =
+                clinicianNoteService.createNoteForLink(patientClinicianLinkId, request);
         return ResponseEntity.ok(newNote);
     }
 
     @PutMapping("/{noteId}")
     public ResponseEntity<ClinicianNoteDto> updateNote(
-            @PathVariable UUID noteId,
-            @Valid @RequestBody ClinicianNoteRequestDto request) {
-        ClinicianNoteDto updatedNote = clinicianNoteService.updateNote(noteId, request);
+            @PathVariable("noteId") UUID noteId,
+            @Valid @RequestBody ClinicianNoteRequestDto request
+    ) {
+        ClinicianNoteDto updatedNote =
+                clinicianNoteService.updateNote(noteId, request);
         return ResponseEntity.ok(updatedNote);
     }
 
     @DeleteMapping("/{noteId}")
-    public ResponseEntity<Void> deleteNote(@PathVariable UUID noteId) {
+    public ResponseEntity<Void> deleteNote(
+            @PathVariable("noteId") UUID noteId
+    ) {
         clinicianNoteService.deleteNote(noteId);
         return ResponseEntity.noContent().build();
     }

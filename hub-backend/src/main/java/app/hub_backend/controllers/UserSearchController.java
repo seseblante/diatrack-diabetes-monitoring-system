@@ -24,22 +24,28 @@ public class UserSearchController {
     private final UserProfileRepository userProfileRepository;
 
     @GetMapping("/search")
-    public ResponseEntity<List<PatientDetailDto>> searchUsers(@RequestParam String query) {
+    public ResponseEntity<List<PatientDetailDto>> searchUsers(
+            @RequestParam("query") String query   // ✅ FIXED
+    ) {
         log.info("Searching for patients with query: {}", query);
+
         // Search by email only (case-insensitive)
         List<User> users = userRepository.findByEmailContainingIgnoreCase(query);
-        
+
         // Filter only patients and map to DTOs
         List<PatientDetailDto> patients = users.stream()
                 .filter(user -> "PATIENT".equalsIgnoreCase(user.getRole()))
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
-        
+
         return ResponseEntity.ok(patients);
     }
-    
+
     private PatientDetailDto convertToDto(User user) {
-        UserProfile profile = userProfileRepository.findById(user.getId()).orElse(null);
+        UserProfile profile = userProfileRepository
+                .findById(user.getId())
+                .orElse(null);
+
         return UserMapper.toPatientDetailDto(user, profile);
     }
 }

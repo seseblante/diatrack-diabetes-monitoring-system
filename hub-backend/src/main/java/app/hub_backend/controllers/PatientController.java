@@ -18,16 +18,23 @@ public class PatientController {
     private final PatientService patientService;
 
     @GetMapping("/{patientId}")
-    public ResponseEntity<PatientDetailDto> getPatientProfile(@PathVariable UUID patientId) {
-        PatientDetailDto profile = patientService.getPatientProfile(patientId);
+    public ResponseEntity<PatientDetailDto> getPatientProfile(
+            @PathVariable("patientId") UUID patientId   // ✅ FIXED
+    ) {
+        PatientDetailDto profile =
+                patientService.getPatientProfile(patientId);
+
         return ResponseEntity.ok(profile);
     }
 
     @PutMapping("/{patientId}")
     public ResponseEntity<PatientDetailDto> updatePatientProfile(
-            @PathVariable UUID patientId,
-            @Valid @RequestBody PatientUpdateRequest updateRequest) {
-        PatientDetailDto updatedProfile = patientService.updatePatientProfile(patientId, updateRequest);
+            @PathVariable("patientId") UUID patientId,  // ✅ FIXED
+            @Valid @RequestBody PatientUpdateRequest updateRequest
+    ) {
+        PatientDetailDto updatedProfile =
+                patientService.updatePatientProfile(patientId, updateRequest);
+
         return ResponseEntity.ok(updatedProfile);
     }
 }

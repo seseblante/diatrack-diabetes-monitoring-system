@@ -18,7 +18,7 @@ public class ClinicDetailsController {
     private final ClinicDetailsService clinicDetailsService;
 
     @GetMapping("/clinician/{clinicianId}")
-    public ResponseEntity<ClinicDetailsDto> getClinicianDetails(@PathVariable UUID clinicianId) {
+    public ResponseEntity<ClinicDetailsDto> getClinicianDetails(@PathVariable("clinicianId") UUID clinicianId) {
         ClinicDetailsDto details = clinicDetailsService.getClinicDetails(clinicianId);
         return ResponseEntity.ok(details);
     }

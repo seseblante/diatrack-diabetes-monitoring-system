@@ -19,24 +19,35 @@ public class QuickMessageController {
     private final QuickMessageService quickMessageService;
 
     @GetMapping("/link/{patientClinicianLinkId}")
-    public ResponseEntity<List<QuickMessageDto>> getMessages(@PathVariable UUID patientClinicianLinkId) {
-        List<QuickMessageDto> messages = quickMessageService.getMessagesForLink(patientClinicianLinkId);
+    public ResponseEntity<List<QuickMessageDto>> getMessages(
+            @PathVariable("patientClinicianLinkId") UUID patientClinicianLinkId   // ✅ FIXED
+    ) {
+        List<QuickMessageDto> messages =
+                quickMessageService.getMessagesForLink(patientClinicianLinkId);
+
         return ResponseEntity.ok(messages);
     }
 
     @PostMapping("/link/{patientClinicianLinkId}")
     public ResponseEntity<QuickMessageDto> sendMessage(
-            @PathVariable UUID patientClinicianLinkId,
-            @Valid @RequestBody QuickMessageRequestDto request) {
+            @PathVariable("patientClinicianLinkId") UUID patientClinicianLinkId,  // ✅ FIXED
+            @Valid @RequestBody QuickMessageRequestDto request
+    ) {
         // This endpoint is for CLINICIANS
-        QuickMessageDto newMessage = quickMessageService.sendMessage(patientClinicianLinkId, request);
+        QuickMessageDto newMessage =
+                quickMessageService.sendMessage(patientClinicianLinkId, request);
+
         return ResponseEntity.ok(newMessage);
     }
 
     @PostMapping("/link/{patientClinicianLinkId}/read")
-    public ResponseEntity<List<QuickMessageDto>> markAsRead(@PathVariable UUID patientClinicianLinkId) {
+    public ResponseEntity<List<QuickMessageDto>> markAsRead(
+            @PathVariable("patientClinicianLinkId") UUID patientClinicianLinkId   // ✅ FIXED
+    ) {
         // This endpoint is for PATIENTS
-        List<QuickMessageDto> updatedMessages = quickMessageService.markMessagesAsRead(patientClinicianLinkId);
+        List<QuickMessageDto> updatedMessages =
+                quickMessageService.markMessagesAsRead(patientClinicianLinkId);
+
         return ResponseEntity.ok(updatedMessages);
     }
 }

@@ -21,44 +21,59 @@ public class LogController {
 
     private final LogService logService;
 
+    // ---------------- MEALS ----------------
+
     @PostMapping("/meals")
     public ResponseEntity<MealDto> logMeal(
-            @PathVariable UUID patientId,
-            @Valid @RequestBody LogRequestDto.MealLog request) {
+            @PathVariable("patientId") UUID patientId,
+            @Valid @RequestBody LogRequestDto.MealLog request
+    ) {
         MealDto meal = logService.createMealLog(patientId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(meal);
     }
 
     @GetMapping("/meals")
-    public ResponseEntity<List<MealDto>> getMealLogs(@PathVariable UUID patientId) {
+    public ResponseEntity<List<MealDto>> getMealLogs(
+            @PathVariable("patientId") UUID patientId
+    ) {
         List<MealDto> meals = logService.getMealLogs(patientId);
         return ResponseEntity.ok(meals);
     }
 
+    // ---------------- SYMPTOMS ----------------
+
     @PostMapping("/symptoms")
     public ResponseEntity<SymptomNoteDto> logSymptom(
-            @PathVariable UUID patientId,
-            @Valid @RequestBody LogRequestDto.SymptomLog request) {
+            @PathVariable("patientId") UUID patientId,
+            @Valid @RequestBody LogRequestDto.SymptomLog request
+    ) {
         SymptomNoteDto symptom = logService.createSymptomLog(patientId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(symptom);
     }
 
     @GetMapping("/symptoms")
-    public ResponseEntity<List<SymptomNoteDto>> getSymptomLogs(@PathVariable UUID patientId) {
+    public ResponseEntity<List<SymptomNoteDto>> getSymptomLogs(
+            @PathVariable("patientId") UUID patientId
+    ) {
         List<SymptomNoteDto> symptoms = logService.getSymptomLogs(patientId);
         return ResponseEntity.ok(symptoms);
     }
 
+    // ---------------- ACTIVITIES ----------------
+
     @PostMapping("/activities")
     public ResponseEntity<ActivityLogDto> logActivity(
-            @PathVariable UUID patientId,
-            @Valid @RequestBody LogRequestDto.ActivityLog request) {
+            @PathVariable("patientId") UUID patientId,
+            @Valid @RequestBody LogRequestDto.ActivityLog request
+    ) {
         ActivityLogDto activity = logService.createActivityLog(patientId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(activity);
     }
 
     @GetMapping("/activities")
-    public ResponseEntity<List<ActivityLogDto>> getActivityLogs(@PathVariable UUID patientId) {
+    public ResponseEntity<List<ActivityLogDto>> getActivityLogs(
+            @PathVariable("patientId") UUID patientId
+    ) {
         List<ActivityLogDto> activities = logService.getActivityLogs(patientId);
         return ResponseEntity.ok(activities);
     }

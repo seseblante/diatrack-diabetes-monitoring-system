@@ -21,38 +21,61 @@ public class MedicationController {
 
     private final MedicationService medicationService;
 
+    // ---------------- REGIMENS ----------------
+
     @PostMapping("/regimens")
     public ResponseEntity<MedicationRegimenDto> addMedicationRegimen(
-            @PathVariable UUID patientId,
-            @Valid @RequestBody MedicationRegimenRequest request) {
-        MedicationRegimenDto regimen = medicationService.createMedicationRegimen(patientId, request);
+            @PathVariable("patientId") UUID patientId,
+            @Valid @RequestBody MedicationRegimenRequest request
+    ) {
+        MedicationRegimenDto regimen =
+                medicationService.createMedicationRegimen(patientId, request);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(regimen);
     }
 
     @GetMapping("/regimens")
-    public ResponseEntity<List<MedicationRegimenDto>> getActiveMedicationRegimens(@PathVariable UUID patientId) {
-        List<MedicationRegimenDto> regimens = medicationService.getActiveRegimens(patientId);
+    public ResponseEntity<List<MedicationRegimenDto>> getActiveMedicationRegimens(
+            @PathVariable("patientId") UUID patientId
+    ) {
+        List<MedicationRegimenDto> regimens =
+                medicationService.getActiveRegimens(patientId);
+
         return ResponseEntity.ok(regimens);
     }
 
     @PutMapping("/regimens/{regimenId}")
     public ResponseEntity<MedicationRegimenDto> updateMedicationRegimen(
-            @PathVariable UUID regimenId,
-            @Valid @RequestBody MedicationRegimenRequest request) {
-        MedicationRegimenDto regimen = medicationService.updateMedicationRegimen(regimenId, request);
+            @PathVariable("patientId") UUID patientId,   // ✅ REQUIRED
+            @PathVariable("regimenId") UUID regimenId,
+            @Valid @RequestBody MedicationRegimenRequest request
+    ) {
+        MedicationRegimenDto regimen =
+                medicationService.updateMedicationRegimen(regimenId, request);
+
         return ResponseEntity.ok(regimen);
     }
 
+    // ---------------- LOGS ----------------
+
     @PostMapping("/logs")
     public ResponseEntity<MedicationLogDto> logMedicationTaken(
-            @Valid @RequestBody MedicationRequestDto.LogTaken request) {
-        MedicationLogDto log = medicationService.createMedicationLog(request);
+            @PathVariable("patientId") UUID patientId,   // optional, but consistent
+            @Valid @RequestBody MedicationRequestDto.LogTaken request
+    ) {
+        MedicationLogDto log =
+                medicationService.createMedicationLog(request);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(log);
     }
 
     @GetMapping("/logs")
-    public ResponseEntity<List<MedicationLogDto>> getMedicationLogs(@PathVariable UUID patientId) {
-        List<MedicationLogDto> logs = medicationService.getMedicationLogs(patientId);
+    public ResponseEntity<List<MedicationLogDto>> getMedicationLogs(
+            @PathVariable("patientId") UUID patientId
+    ) {
+        List<MedicationLogDto> logs =
+                medicationService.getMedicationLogs(patientId);
+
         return ResponseEntity.ok(logs);
     }
 }
