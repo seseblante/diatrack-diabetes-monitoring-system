@@ -48,7 +48,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-100">
-      <div className="w-[375px] h-[812px] bg-white shadow-2xl overflow-hidden">
+      <div className="w-[375px] h-[812px] bg-white shadow-2xl overflow-hidden relative">
         {currentView === 'login' && (
           <LoginInterface 
             onLogin={handleLogin} 

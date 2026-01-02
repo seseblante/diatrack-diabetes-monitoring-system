@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
@@ -67,6 +67,17 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   const [symptomDescription, setSymptomDescription] = useState('');
   const [symptomSeverity, setSymptomSeverity] = useState('Mild');
   const [symptomNotesInput, setSymptomNotesInput] = useState('');
+  const mealTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const symptomTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const symptomNotesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (quickLogType === 'meal' && mealTextareaRef.current) {
+      try { mealTextareaRef.current.focus({ preventScroll: true } as any); } catch { mealTextareaRef.current.focus(); }
+    }
+    if (quickLogType === 'symptoms' && symptomTextareaRef.current) {
+      try { symptomTextareaRef.current.focus({ preventScroll: true } as any); } catch { symptomTextareaRef.current.focus(); }
+    }
+  }, [quickLogType]);
   
   // Backend data state
   const [glucoseReadings, setGlucoseReadings] = useState<GlucoseReading[]>([]);
@@ -406,21 +417,24 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
 
   const handleLogMedication = async (regimenId: string) => {
     if (!currentUser?.id) return;
-    
+
     setIsLoading(true);
     try {
-      await logMedicationTaken(currentUser.id, {
+      const takenAt = new Date().toISOString();
+      const newLog = await logMedicationTaken(currentUser.id, {
         regimenId,
-        takenAt: new Date().toISOString()
+        takenAt
       });
-      
-      // Refetch data to get updated list
-      await fetchData();
+
+      // Optimistic UI update to avoid refetch-induced jank
+      setMedicationLogs((prev) => [{ ...newLog }, ...prev]);
     } catch (err: any) {
       setError(err.message || 'Failed to log medication');
       console.error('Error logging medication:', err);
     } finally {
       setIsLoading(false);
+      // Background refresh (non-blocking)
+      getMedicationLogs(currentUser.id).then(setMedicationLogs).catch(() => {});
     }
   };
 
@@ -428,8 +442,9 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     if (!showNotifications) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-end justify-center">
-        <div className="bg-white w-full max-w-[375px] rounded-t-3xl max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300 shadow-2xl">
+      <div className="absolute inset-0 z-50 flex items-end justify-center">
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowNotifications(false)} />
+        <div className="relative bg-white w-full max-w-[375px] rounded-t-3xl max-h-[90vh] overflow-hidden shadow-2xl isolate transform-gpu">
           <div className="flex justify-center pt-3 pb-2">
             <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
           </div>
@@ -559,8 +574,9 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     if (!quickLogType) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-end justify-center">
-        <div className="bg-white w-full max-w-[375px] rounded-t-3xl max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300 shadow-2xl">
+      <div className="absolute inset-0 z-50 flex items-end justify-center">
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-0" onClick={() => setQuickLogType(null)} />
+        <div className="relative bg-white w-full max-w-[375px] rounded-t-3xl max-h-[90vh] overflow-hidden shadow-2xl isolate transform-gpu z-10" onClick={(e: any) => e.stopPropagation()}>
           <div className="flex justify-center pt-3 pb-2">
             <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
           </div>
@@ -593,12 +609,14 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       <div className="text-gray-600">Enter your reading</div>
                       <div className="flex items-center justify-center space-x-4">
                         <Input 
-                          type="number" 
+                          type="text" 
                           placeholder="120"
                           value={glucoseValue}
                           onChange={(e) => setGlucoseValue(e.target.value)}
                           className="w-32 h-16 text-4xl text-center border-2 border-blue-300 rounded-2xl focus:ring-2 focus:ring-blue-300 focus:border-blue-500 bg-white shadow-lg"
                           inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoFocus
                         />
                         <span className="text-xl text-gray-700 font-medium">mg/dL</span>
                       </div>
@@ -658,21 +676,30 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       <label className="block font-semibold mb-3 text-gray-800">What did you eat? 🍽️</label>
                       <textarea 
                         placeholder="e.g., Grilled chicken salad with vinaigrette, whole grain roll..."
+                        dir="auto"
                         value={mealDescription}
                         onChange={(e) => setMealDescription(e.target.value)}
-                        className="w-full h-20 p-3 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 focus:border-green-500 bg-white shadow-lg resize-none"
+                        className="w-full h-20 p-3 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 focus:border-green-500 bg-white shadow-lg resize-none text-left"
+                        style={{ unicodeBidi: 'plaintext' }}
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        autoFocus
+                        ref={mealTextareaRef}
                       />
                     </div>
                     
                     <div>
                       <label className="block font-semibold mb-2 text-gray-800">Carbs (grams) 🍞</label>
                       <Input 
-                        type="number" 
+                        type="text" 
                         placeholder="e.g., 45"
                         value={carbsValue}
                         onChange={(e) => setCarbsValue(e.target.value)}
                         className="h-12 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 bg-white shadow-lg"
                         inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="off"
                       />
                     </div>
 
@@ -767,9 +794,16 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       <label className="block font-semibold mb-3 text-gray-800">How are you feeling? 💭</label>
                       <textarea 
                         placeholder="e.g., Feeling dizzy after lunch, slight headache, more tired than usual..."
-                        className="w-full h-24 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none"
+                        dir="auto"
+                        className="w-full h-24 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none text-left"
+                        style={{ unicodeBidi: 'plaintext' }}
                         value={symptomDescription}
                         onChange={(e) => setSymptomDescription(e.target.value)}
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        autoFocus
+                        ref={symptomTextareaRef}
                       />
                     </div>
                     
@@ -790,9 +824,15 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       <label className="block font-semibold mb-3 text-gray-800">Additional Notes (Optional)</label>
                       <textarea 
                         placeholder="Any additional details..."
-                        className="w-full h-20 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none"
+                        dir="auto"
+                        className="w-full h-20 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none text-left"
+                        style={{ unicodeBidi: 'plaintext' }}
                         value={symptomNotesInput}
                         onChange={(e) => setSymptomNotesInput(e.target.value)}
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        ref={symptomNotesTextareaRef}
                       />
                     </div>
                     
