@@ -1,0 +1,50 @@
+@startuml
+actor "Patient" as P
+participant "Frontend (React)" as UI
+participant "GlucoseController" as API
+participant "GlucoseService" as Service
+participant "AlertService" as Alert
+database "PostgreSQL" as DB
+
+P -> UI : Opens "Quick Log" Modal
+P -> UI : Enters Value (45 mg/dL) + Context
+P -> UI : Clicks "Save"
+
+activate UI
+UI -> API : POST /api/glucose/log
+activate API
+
+API -> Service : logReading(patientId, dto)
+activate Service
+
+Service -> DB : INSERT into glucose_readings
+activate DB
+DB --> Service : Success (Reading ID)
+deactivate DB
+
+' Threshold Check Logic
+Service -> Service : checkThresholds(45 mg/dL)
+alt Critical Low (< 54 mg/dL)
+    Service -> Alert : createAlert("SEVERE_LOW")
+    activate Alert
+    Alert -> DB : INSERT into alerts
+    Alert --> Service : Alert Created
+    deactivate Alert
+    Service --> API : Return Reading + Warning Flag
+else Normal Range
+    Service --> API : Return Reading
+end
+
+deactivate Service
+
+API --> UI : JSON Response (200 OK)
+deactivate API
+
+alt Warning Flag is True
+    UI -> P : Display "Severe Low" Safety Modal
+else Normal
+    UI -> P : Display "Saved Successfully" Toast
+end
+
+deactivate UI
+@enduml

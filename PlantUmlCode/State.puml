@@ -1,0 +1,27 @@
+@startuml
+scale 600 width
+
+[*] --> NewReading : Patient Logs Glucose
+
+state NewReading {
+  [*] --> Evaluating
+  Evaluating --> Breach : Value < 54 or > 250 mg/dL \n(Critical Threshold)
+  Evaluating --> Safe : Value within limits
+}
+
+state "Alert Open" as Open {
+  state "Database Entry Created" as Logged
+  state "User Notified" as Notified
+
+  Breach --> Logged : System sets status = 'OPEN'
+  Logged --> Notified : Safety Modal / Dashboard Flag
+}
+
+NewReading --> Normal : Safe
+Normal --> [*]
+
+' Transition driven by Patient "Mark OK" [Source: 997] or DB "acknowledged_by" field
+Open --> Acknowledged : User clicks "Mark OK" (Patient)\nor Resolves (Clinician)
+Acknowledged --> [*] : Status = 'ACKNOWLEDGED'
+
+@enduml

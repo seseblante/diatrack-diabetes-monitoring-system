@@ -1,0 +1,44 @@
+@startuml
+actor "Clinician" as C
+participant "Frontend (Dashboard)" as UI
+participant "ClinicianController" as API
+participant "PatientService" as Service
+database "PostgreSQL" as DB
+
+C -> UI : Access Dashboard
+activate UI
+
+UI -> API : GET /api/clinician/roster
+activate API
+
+API -> Service : getPatientRoster(clinicianId)
+activate Service
+
+' Fetching linked patients and their latest status
+Service -> DB : SELECT * FROM patient_clinicians \nJOIN v_patient_latest_glucose \nJOIN alerts
+activate DB
+note right of DB
+  Retrieves:
+  - Patient Name/ID
+  - Last Glucose Value
+  - Active Alert Count
+end note
+DB --> Service : ResultSet (List of Patients)
+deactivate DB
+
+' Optional: Calculate Metrics if not in View
+loop For Each Patient
+    Service -> Service : calculateTrend(history)
+end
+
+Service --> API : Return List<PatientRosterDTO>
+deactivate Service
+
+API --> UI : JSON Response (200 OK)
+deactivate API
+
+UI -> UI : Render Scrollable List
+UI -> C : Display Patient Roster with Status Indicators
+
+deactivate UI
+@enduml

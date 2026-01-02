@@ -1,0 +1,57 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Patient" as P
+actor "Clinician" as C
+
+rectangle "DiaTrack System" {
+
+  ' Patient Use Cases (Bottom Menu Navigation)
+  usecase "Log Health Data" as UC_Log
+  usecase "Log Glucose" as UC_LogGlu
+  usecase "Log Meal/Carbs" as UC_LogMeal
+  usecase "Log Medication" as UC_LogMed
+  usecase "Log Symptoms" as UC_LogSym
+  usecase "View Trends (7d/30d)" as UC_ViewTrends
+  usecase "View History Log" as UC_ViewHistory
+  usecase "Export PDF Report" as UC_Export
+  usecase "Manage Profile & Settings" as UC_Settings
+
+  ' Clinician Use Cases (Dashboard Navigation)
+  usecase "View Patient Roster" as UC_ViewRoster
+  usecase "View Patient Details" as UC_ViewDetails
+  usecase "Manage Medication Regimens" as UC_ManageRegimen
+  usecase "Manage Clinic Schedule" as UC_Schedule
+  usecase "Link New Patient" as UC_Link
+
+  ' Shared/Communication Use Cases
+  usecase "Secure Messaging" as UC_Message
+  usecase "Receive Alerts" as UC_Alerts
+
+  ' Relationships
+  P --> UC_Log
+  UC_Log ..> UC_LogGlu : <<include>>
+  UC_Log ..> UC_LogMeal : <<include>>
+  UC_Log ..> UC_LogMed : <<include>>
+  UC_Log ..> UC_LogSym : <<include>>
+
+  P --> UC_ViewTrends
+  P --> UC_ViewHistory
+  P --> UC_Settings
+  P --> UC_Message
+  P --> UC_Export
+
+  C --> UC_ViewRoster
+  C --> UC_ViewDetails
+  C --> UC_ManageRegimen
+  C --> UC_Schedule
+  C --> UC_Link
+  C --> UC_Message
+
+  ' Logic Extensions
+  UC_LogGlu <.. UC_Alerts : <<extend>> \n(Critical Value)
+  UC_ViewRoster ..> UC_ViewDetails : <<include>>
+
+}
+@enduml

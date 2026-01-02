@@ -1,0 +1,77 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+class User {
+  +id : UUID
+  +email : String
+  +password_hash : String
+  +full_name : String
+  +role : UserRole
+  +is_consent_given : Boolean
+  +created_at : Timestamp
+}
+
+class UserProfile {
+  +user_id : UUID
+  +dob : Date
+  +sex : String
+  +timezone : String
+}
+
+class ClinicDetails {
+  +clinician_id : UUID
+  +clinic_name : String
+  +schedule_days : String
+  +contact_phone : String
+}
+
+class PatientClinician {
+  +id : UUID
+  +status : String
+  +next_appointment_at : Timestamp
+}
+
+class GlucoseReading {
+  +id : UUID
+  +value_mgdl : Float
+  +context : GlucoseContext
+  +measured_at : Timestamp
+  +last_meal_at : Timestamp
+}
+
+class MedicationRegimen {
+  +id : UUID
+  +medication_name : String
+  +dose_amount : Float
+  +frequency_type : FrequencyType
+  +times_of_day : JSONB
+}
+
+class MedicationLog {
+  +id : UUID
+  +taken_at : Timestamp
+  +status : String
+}
+
+class Alert {
+  +id : UUID
+  +type : String
+  +detected_at : Timestamp
+  +status : AlertStatus
+}
+
+' Relationships
+User "1" -- "1" UserProfile : has >
+User <|-- Patient
+User <|-- Clinician
+
+Clinician "1" -- "1" ClinicDetails : manages >
+Patient "1" -- "*" PatientClinician : links >
+Clinician "1" -- "*" PatientClinician : links >
+
+Patient "1" -- "*" GlucoseReading : logs >
+Patient "1" -- "*" MedicationRegimen : has >
+MedicationRegimen "1" -- "*" MedicationLog : tracks >
+Patient "1" -- "*" Alert : triggers >
+
+@enduml
