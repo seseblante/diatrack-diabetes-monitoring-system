@@ -10,15 +10,14 @@ public class AlertMapper {
             return null;
         }
 
-        // This mapper now correctly returns the 6 fields
-        // your DTO is expecting.
         return new AlertDto(
                 entity.getId(),
                 entity.getPatientId(),
                 entity.getType(),
                 entity.getDetectedAt(),
                 entity.getStatus(),
-                entity.getAcknowledgedAt()
+                entity.getAcknowledgedAt(),
+                entity.getNotes()
         );
     }
 }

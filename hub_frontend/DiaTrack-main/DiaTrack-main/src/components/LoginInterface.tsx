@@ -61,10 +61,6 @@ export function LoginInterface({ onLogin, onCreateAccount }: LoginInterfaceProps
     }
   };
 
-  const handleQuickLogin = (userType: 'patient' | 'clinician') => {
-    // For demo purposes - quick access
-    onLogin(userType);
-  };
 
   return (
     <div className="h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col overflow-hidden pt-11">
@@ -148,38 +144,8 @@ export function LoginInterface({ onLogin, onCreateAccount }: LoginInterfaceProps
                 </div>
               )}
 
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-4 text-gray-500">Quick Demo Access</span>
-                </div>
-              </div>
-
-              {/* Quick Demo Buttons */}
-              <div className="space-y-2">
-                <Button
-                  onClick={() => handleQuickLogin('patient')}
-                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 rounded-xl"
-                  disabled={isLoading}
-                >
-                  🏠 Enter as Patient
-                </Button>
-                <Button
-                  onClick={() => handleQuickLogin('clinician')}
-                  variant="outline"
-                  className="w-full h-11 border-2 border-gray-300 rounded-xl hover:bg-gray-50"
-                  disabled={isLoading}
-                >
-                  🏥 Enter as Clinician
-                </Button>
-              </div>
-
               {/* Help Links */}
-              <div className="flex justify-between text-sm">
-                <button className="text-blue-600 hover:underline">Forgot password?</button>
+              <div className="flex justify-center text-sm">
                 <button className="text-gray-500 hover:underline">Need help?</button>
               </div>
             </CardContent>

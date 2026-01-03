@@ -9,7 +9,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -110,18 +110,9 @@ public class PdfReportGenerator {
 
     // --- (buildPdf method is unchanged) ---
     private byte[] buildPdf(String title, String subtitle, List<Section> sections) {
-        // ... (No changes here) ...
         try (PDDocument doc = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            PDFont fontReg;
-            PDFont fontBold;
-            try (var reg = getClass().getResourceAsStream("/fonts/NotoSans-Regular.ttf");
-                 var bold = getClass().getResourceAsStream("/fonts/NotoSans-Bold.ttf")) {
-                if (reg == null || bold == null) {
-                    throw new IOException("Font files not found in resources/fonts/");
-                }
-                fontReg  = PDType0Font.load(doc, reg);
-                fontBold = PDType0Font.load(doc, bold);
-            }
+            PDFont fontReg = PDType1Font.HELVETICA;
+            PDFont fontBold = PDType1Font.HELVETICA_BOLD;
             Writer w = new Writer(doc, PDRectangle.A4);
             w.ensureSpace(TITLE_SIZE + 8);
             w.textLine(title, fontBold, TITLE_SIZE);

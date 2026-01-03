@@ -37,5 +37,7 @@ export async function logGlucoseReading(
  * @returns List of glucose readings
  */
 export async function getGlucoseReadings(patientId: string): Promise<GlucoseReading[]> {
-  return await get<GlucoseReading[]>(`/api/patients/${patientId}/glucose`);
+  // [FIX] Added timestamp query param to bypass browser caching
+  const timestamp = new Date().getTime();
+  return await get<GlucoseReading[]>(`/api/patients/${patientId}/glucose?t=${timestamp}`);
 }

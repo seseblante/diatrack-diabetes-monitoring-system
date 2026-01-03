@@ -3,11 +3,11 @@ import { get, post } from './client';
 export interface Alert {
   id: string;
   patientId: string;
-  message: string;
-  severity: string;
-  isAcknowledged: boolean;
-  createdAt: string;
+  type: string;
+  detectedAt: string;
+  status: string;
   acknowledgedAt?: string;
+  notes?: string;
 }
 
 /**

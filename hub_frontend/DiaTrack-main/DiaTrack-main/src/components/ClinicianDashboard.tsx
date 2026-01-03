@@ -94,9 +94,11 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               try {
                 // Fetch glucose readings
                 const readings = await getGlucoseReadings(link.patientId);
-                const sortedReadings = readings.sort((a: GlucoseReading, b: GlucoseReading) => 
-                  new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime()
-                );
+                const sortedReadings = [...readings].sort((a: GlucoseReading, b: GlucoseReading) => {
+                  const timeA = new Date(a.measuredAt).getTime();
+                  const timeB = new Date(b.measuredAt).getTime();
+                  return timeB - timeA;
+                });
                 
                 // Fetch alerts
                 const alerts = await getAlerts(link.patientId);
@@ -203,7 +205,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
       container.scrollTop = savedScrollPosition.current;
     }
   }, [showMessaging, showClinicSchedule, showClinicSettings, showAppointments]);
-  
+
   // Helper function to calculate time ago
   const getTimeAgo = (timestamp: string): string => {
     const now = new Date();
@@ -235,6 +237,28 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
       case 'down': return <TrendingDown className="w-4 h-4 text-blue-500" />;
       case 'stable': return <div className="w-4 h-4 border-t-2 border-green-500" />;
       default: return null;
+    }
+  };
+
+  const getPatientStatus = (timeInRange: number, alertCount: number): 'good' | 'warning' | 'danger' => {
+    if (timeInRange < 50 || alertCount > 0) return 'danger';
+    if (timeInRange >= 50 && timeInRange <= 70) return 'warning';
+    return 'good';
+  };
+
+  const getStatusIcon = (status: 'good' | 'warning' | 'danger') => {
+    switch (status) {
+      case 'good': return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
+      case 'danger': return <AlertTriangle className="w-5 h-5 text-red-600" />;
+    }
+  };
+
+  const getStatusColor = (status: 'good' | 'warning' | 'danger') => {
+    switch (status) {
+      case 'good': return 'bg-green-50 border-green-200';
+      case 'warning': return 'bg-yellow-50 border-yellow-200';
+      case 'danger': return 'bg-red-50 border-red-200';
     }
   };
 
@@ -368,7 +392,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                     {patient.alerts.map((alert: Alert, index: number) => (
                       <div key={index} className="flex items-start space-x-3 p-4 bg-white rounded-xl border border-red-200">
                         <AlertTriangle className="w-6 h-6 text-red-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-lg text-red-700 font-medium">{alert.message}</span>
+                        <span className="text-lg text-red-700 font-medium">{alert.notes || 'No details available'}</span>
                       </div>
                     ))}
                   </div>
@@ -436,9 +460,10 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   if (selectedPatient) {
                     try {
                       await downloadPatientReportPdf(selectedPatient.patientId, `${selectedPatient.patientName}_report.pdf`);
+                      alert('Report downloaded successfully!');
                     } catch (error) {
                       console.error('Error downloading report:', error);
-                      alert('Export functionality is not yet fully implemented on the backend. Please try again later.');
+                      alert('Failed to export report. Please check the console for details.');
                     }
                   }
                 }}
@@ -626,11 +651,13 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {filteredPatients.map((patient) => (
+            {filteredPatients.map((patient) => {
+              const status = getPatientStatus(patient.timeInRange || 0, patient.alerts?.length || 0);
+              return (
               <div
                 key={patient.id}
                 onClick={() => setSelectedPatient(patient)}
-                className="p-4 rounded-xl border bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+                className={`p-4 rounded-xl border-2 hover:shadow-md cursor-pointer transition-all ${getStatusColor(status)}`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
@@ -652,24 +679,40 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="text-right">
+                  <div className="flex items-center space-x-2">
                     <div className="text-sm font-medium text-gray-900">{patient.timeInRange || 0}%</div>
                     <p className="text-xs text-gray-500">Time in Range</p>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    {getStatusIcon(status)}
                   </div>
                 </div>
 
                 {patient.alerts && patient.alerts.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-red-500" />
                       <span className="text-sm text-red-600 font-medium">
                         {patient.alerts.length} active alert{patient.alerts.length > 1 ? 's' : ''}
                       </span>
                     </div>
+                    <div className="space-y-1">
+                      {patient.alerts.slice(0, 2).map((alert: Alert, index: number) => (
+                        <div key={index} className="text-xs text-red-700 bg-red-50 px-2 py-1 rounded">
+                          {alert.notes || 'No details available'}
+                        </div>
+                      ))}
+                      {patient.alerts.length > 2 && (
+                        <div className="text-xs text-red-600 italic">
+                          +{patient.alerts.length - 2} more alert{patient.alerts.length - 2 > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
 

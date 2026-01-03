@@ -51,6 +51,408 @@ interface PatientDashboardProps {
 type MobileTab = 'home' | 'trends' | 'history' | 'menu';
 type QuickLogType = 'glucose' | 'meal' | 'medication' | 'symptoms' | null;
 
+interface QuickLogModalProps {
+  quickLogType: QuickLogType;
+  setQuickLogType: (type: QuickLogType) => void;
+  glucoseValue: string;
+  setGlucoseValue: (value: string) => void;
+  glucoseContext: GlucoseContextType;
+  setGlucoseContext: (context: GlucoseContextType) => void;
+  mealDescription: string;
+  setMealDescription: (value: string) => void;
+  carbsValue: string;
+  setCarbsValue: (value: string) => void;
+  mealTime: string;
+  setMealTime: (value: string) => void;
+  symptomDescription: string;
+  setSymptomDescription: (value: string) => void;
+  symptomSeverity: string;
+  setSymptomSeverity: (value: string) => void;
+  symptomNotesInput: string;
+  setSymptomNotesInput: (value: string) => void;
+  medicationRegimens: MedicationRegimen[];
+  medicationLogs: MedicationLog[];
+  isLoading: boolean;
+  currentUser: any;
+  handleSaveGlucose: () => Promise<void>;
+  handleSaveMeal: () => Promise<void>;
+  handleLogMedication: (regimenId: string) => Promise<void>;
+  formatDate: (isoString: string) => string;
+  formatTime: (isoString: string) => string;
+}
+
+function QuickLogModal({
+  quickLogType,
+  setQuickLogType,
+  glucoseValue,
+  setGlucoseValue,
+  glucoseContext,
+  setGlucoseContext,
+  mealDescription,
+  setMealDescription,
+  carbsValue,
+  setCarbsValue,
+  mealTime,
+  setMealTime,
+  symptomDescription,
+  setSymptomDescription,
+  symptomSeverity,
+  setSymptomSeverity,
+  symptomNotesInput,
+  setSymptomNotesInput,
+  medicationRegimens,
+  medicationLogs,
+  isLoading,
+  currentUser,
+  handleSaveGlucose,
+  handleSaveMeal,
+  handleLogMedication,
+  formatDate,
+  formatTime
+}: QuickLogModalProps) {
+  const mealTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const symptomTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const symptomNotesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  if (!quickLogType) return null;
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-0" onClick={() => setQuickLogType(null)} />
+      <div className="relative bg-white w-full max-w-[375px] rounded-t-3xl max-h-[90vh] overflow-hidden shadow-2xl isolate transform-gpu z-10" onClick={(e: any) => e.stopPropagation()}>
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
+        </div>
+        
+        <div className="px-6 py-4">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-3xl font-bold">
+              {quickLogType === 'glucose' && '🩸 Blood Sugar'}
+              {quickLogType === 'meal' && '🍽️ Log Meal'}
+              {quickLogType === 'medication' && '💊 Medication'}
+              {quickLogType === 'symptoms' && '📝 Symptoms'}
+            </h2>
+            <Button 
+              variant="ghost" 
+              onClick={() => setQuickLogType(null)}
+              className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200"
+            >
+              <X className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="px-6 pb-8 overflow-y-auto max-h-[75vh] hide-scrollbar">
+
+          {quickLogType === 'glucose' && (
+            <div className="space-y-6">
+              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg">
+                <CardContent className="pt-6 pb-6 space-y-6">
+                  <div className="text-center space-y-4">
+                    <div className="text-gray-600">Enter your reading</div>
+                    <div className="flex items-center justify-center space-x-4">
+                      <Input 
+                        type="text" 
+                        placeholder="120"
+                        value={glucoseValue}
+                        onChange={(e) => setGlucoseValue(e.target.value)}
+                        className="w-32 h-16 text-4xl text-center border-2 border-blue-300 rounded-2xl focus:ring-2 focus:ring-blue-300 focus:border-blue-500 bg-white shadow-lg"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoFocus
+                      />
+                      <span className="text-xl text-gray-700 font-medium">mg/dL</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="text-center text-gray-600 font-medium">When was this taken?</p>
+                    <div className="grid grid-cols-1 gap-3">
+                      <Button 
+                        variant="outline" 
+                        className={`h-12 rounded-xl border-2 ${glucoseContext === 'Fasting' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                        onClick={() => setGlucoseContext('Fasting')}
+                      >
+                        Fasting
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className={`h-12 rounded-xl border-2 ${glucoseContext === 'Before Meal' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                        onClick={() => setGlucoseContext('Before Meal')}
+                      >
+                        Before Meal
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className={`h-12 rounded-xl border-2 ${glucoseContext === 'After Meal' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                        onClick={() => setGlucoseContext('After Meal')}
+                      >
+                        After Meal
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className={`h-12 rounded-xl border-2 ${glucoseContext === 'Bedtime' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
+                        onClick={() => setGlucoseContext('Bedtime')}
+                      >
+                        Bedtime
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleSaveGlucose}
+                    className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg"
+                    disabled={!glucoseValue || isLoading}
+                  >
+                    {isLoading ? '⏳ Saving...' : (glucoseValue ? `Save Reading: ${glucoseValue} mg/dL` : 'Enter Reading First')}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {quickLogType === 'meal' && (
+            <div className="space-y-6">
+              <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 shadow-lg">
+                <CardContent className="pt-6 pb-6 space-y-5">
+                  <div>
+                    <label className="block font-semibold mb-3 text-gray-800">What did you eat? 🍽️</label>
+                    <textarea 
+                      placeholder="e.g., Grilled chicken salad with vinaigrette, whole grain roll..."
+                      dir="auto"
+                      value={mealDescription}
+                      onChange={(e) => setMealDescription(e.target.value)}
+                      className="w-full h-20 p-3 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 focus:border-green-500 bg-white shadow-lg resize-none text-left"
+                      style={{ unicodeBidi: 'plaintext' }}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      ref={mealTextareaRef}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block font-semibold mb-2 text-gray-800">Carbs (grams) 🍞</label>
+                    <Input 
+                      type="text" 
+                      placeholder="e.g., 45"
+                      value={carbsValue}
+                      onChange={(e) => setCarbsValue(e.target.value)}
+                      className="h-12 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 bg-white shadow-lg"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold mb-2 text-gray-800">Time eaten 🕐</label>
+                    <Input 
+                      type="time" 
+                      value={mealTime}
+                      onChange={(e) => setMealTime(e.target.value)}
+                      className="h-12 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 bg-white shadow-lg"
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={handleSaveMeal}
+                    className="w-full h-14 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl shadow-lg"
+                    disabled={!mealDescription || isLoading}
+                  >
+                    {isLoading ? '⏳ Saving...' : (mealDescription ? '✅ Log This Meal' : 'Describe Your Meal First')}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {quickLogType === 'medication' && (
+            <div className="space-y-6">
+              <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg">
+                <CardContent className="pt-6 pb-6 space-y-5">
+                  <div className="text-center space-y-3">
+                    <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto">
+                      <Pill className="w-8 h-8 text-white" />
+                    </div>
+                    <p className="font-semibold text-gray-800">Mark medications as taken</p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {medicationRegimens.length > 0 ? (
+                      medicationRegimens.map((regimen) => {
+                        const isTakenToday = medicationLogs.some(log => 
+                          log.regimenId === regimen.id && 
+                          formatDate(log.takenAt) === 'Today'
+                        );
+                        
+                        return (
+                          <Button 
+                            key={regimen.id}
+                            variant="outline" 
+                            className="w-full h-16 justify-between text-left rounded-xl border-2 border-purple-300 bg-white hover:bg-purple-50 shadow-lg"
+                            onClick={() => !isTakenToday && handleLogMedication(regimen.id)}
+                            disabled={isTakenToday}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                <Pill className="w-5 h-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <div className="font-semibold">{regimen.medicationName}</div>
+                                <div className="text-sm text-gray-500">{regimen.dosage} - {regimen.frequency}</div>
+                              </div>
+                            </div>
+                            {isTakenToday ? (
+                              <CheckCircle className="w-6 h-6 text-green-600" />
+                            ) : (
+                              <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
+                            )}
+                          </Button>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>No medications found</p>
+                        <p className="text-sm">Ask your doctor to add your medications</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button className="w-full h-14 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-xl shadow-lg">
+                    💊 Update Medications
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {quickLogType === 'symptoms' && (
+            <div className="space-y-6">
+              <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 shadow-lg">
+                <CardContent className="pt-6 pb-6 space-y-5">
+                  <div>
+                    <label className="block font-semibold mb-3 text-gray-800">How are you feeling? 💭</label>
+                    <textarea 
+                      placeholder="e.g., Feeling dizzy after lunch, slight headache, more tired than usual..."
+                      dir="auto"
+                      className="w-full h-24 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none text-left"
+                      style={{ unicodeBidi: 'plaintext' }}
+                      value={symptomDescription}
+                      onChange={(e) => setSymptomDescription(e.target.value)}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      ref={symptomTextareaRef}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block font-semibold mb-3 text-gray-800">Severity</label>
+                    <select 
+                      className="w-full h-12 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg"
+                      value={symptomSeverity}
+                      onChange={(e) => setSymptomSeverity(e.target.value)}
+                    >
+                      <option value="Mild">Mild</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Severe">Severe</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block font-semibold mb-3 text-gray-800">Additional Notes (Optional)</label>
+                    <textarea 
+                      placeholder="Any additional details..."
+                      dir="auto"
+                      className="w-full h-20 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none text-left"
+                      style={{ unicodeBidi: 'plaintext' }}
+                      value={symptomNotesInput}
+                      onChange={(e) => setSymptomNotesInput(e.target.value)}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      ref={symptomNotesTextareaRef}
+                    />
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="font-semibold text-gray-800">Quick options:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                        onClick={() => setSymptomDescription('Feeling tired')}
+                      >
+                        😴 Tired
+                      </Button>
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                        onClick={() => setSymptomDescription('Feeling nauseous')}
+                      >
+                        🤢 Nauseous
+                      </Button>
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                        onClick={() => setSymptomDescription('Feeling dizzy')}
+                      >
+                        😵‍💫 Dizzy
+                      </Button>
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
+                        onClick={() => setSymptomDescription('Feeling unwell')}
+                      >
+                        🤒 Unwell
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full h-14 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 rounded-xl shadow-lg"
+                    disabled={!symptomDescription || isLoading}
+                    onClick={async () => {
+                      if (!currentUser?.id || !symptomDescription) {
+                        alert('Please enter symptom description');
+                        return;
+                      }
+                      try {
+                        await logSymptom(currentUser.id, {
+                          symptom: symptomDescription,
+                          severity: symptomSeverity,
+                          notes: symptomNotesInput || undefined,
+                          occurredAt: new Date().toISOString()
+                        });
+                        setSymptomDescription('');
+                        setSymptomSeverity('Mild');
+                        setSymptomNotesInput('');
+                        setQuickLogType(null);
+                        alert('Symptom logged successfully!');
+                      } catch (error) {
+                        console.error('Error logging symptom:', error);
+                        alert('Failed to log symptom. Please try again.');
+                      }
+                    }}
+                  >
+                    {isLoading ? '⏳ Saving...' : '📝 Log Symptoms'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [quickLogType, setQuickLogType] = useState<QuickLogType>(null);
@@ -67,17 +469,6 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   const [symptomDescription, setSymptomDescription] = useState('');
   const [symptomSeverity, setSymptomSeverity] = useState('Mild');
   const [symptomNotesInput, setSymptomNotesInput] = useState('');
-  const mealTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const symptomTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const symptomNotesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    if (quickLogType === 'meal' && mealTextareaRef.current) {
-      try { mealTextareaRef.current.focus({ preventScroll: true } as any); } catch { mealTextareaRef.current.focus(); }
-    }
-    if (quickLogType === 'symptoms' && symptomTextareaRef.current) {
-      try { symptomTextareaRef.current.focus({ preventScroll: true } as any); } catch { symptomTextareaRef.current.focus(); }
-    }
-  }, [quickLogType]);
   
   // Backend data state
   const [glucoseReadings, setGlucoseReadings] = useState<GlucoseReading[]>([]);
@@ -570,350 +961,6 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     );
   };
 
-  const QuickLogModal = () => {
-    if (!quickLogType) return null;
-
-    return (
-      <div className="absolute inset-0 z-50 flex items-end justify-center">
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-0" onClick={() => setQuickLogType(null)} />
-        <div className="relative bg-white w-full max-w-[375px] rounded-t-3xl max-h-[90vh] overflow-hidden shadow-2xl isolate transform-gpu z-10" onClick={(e: any) => e.stopPropagation()}>
-          <div className="flex justify-center pt-3 pb-2">
-            <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
-          </div>
-          
-          <div className="px-6 py-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-bold">
-                {quickLogType === 'glucose' && '🩸 Blood Sugar'}
-                {quickLogType === 'meal' && '🍽️ Log Meal'}
-                {quickLogType === 'medication' && '💊 Medication'}
-                {quickLogType === 'symptoms' && '📝 Symptoms'}
-              </h2>
-              <Button 
-                variant="ghost" 
-                onClick={() => setQuickLogType(null)}
-                className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200"
-              >
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
-          </div>
-          
-          <div className="px-6 pb-8 overflow-y-auto max-h-[75vh] hide-scrollbar">
-
-            {quickLogType === 'glucose' && (
-              <div className="space-y-6">
-                <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg">
-                  <CardContent className="pt-6 pb-6 space-y-6">
-                    <div className="text-center space-y-4">
-                      <div className="text-gray-600">Enter your reading</div>
-                      <div className="flex items-center justify-center space-x-4">
-                        <Input 
-                          type="text" 
-                          placeholder="120"
-                          value={glucoseValue}
-                          onChange={(e) => setGlucoseValue(e.target.value)}
-                          className="w-32 h-16 text-4xl text-center border-2 border-blue-300 rounded-2xl focus:ring-2 focus:ring-blue-300 focus:border-blue-500 bg-white shadow-lg"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          autoFocus
-                        />
-                        <span className="text-xl text-gray-700 font-medium">mg/dL</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="text-center text-gray-600 font-medium">When was this taken?</p>
-                      <div className="grid grid-cols-1 gap-3">
-                        <Button 
-                          variant="outline" 
-                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'Fasting' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
-                          onClick={() => setGlucoseContext('Fasting')}
-                        >
-                          Fasting
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'Before Meal' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
-                          onClick={() => setGlucoseContext('Before Meal')}
-                        >
-                          Before Meal
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'After Meal' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
-                          onClick={() => setGlucoseContext('After Meal')}
-                        >
-                          After Meal
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className={`h-12 rounded-xl border-2 ${glucoseContext === 'Bedtime' ? 'bg-blue-100 border-blue-400' : 'hover:bg-blue-50'}`}
-                          onClick={() => setGlucoseContext('Bedtime')}
-                        >
-                          Bedtime
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      onClick={handleSaveGlucose}
-                      className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg"
-                      disabled={!glucoseValue || isLoading}
-                    >
-                      {isLoading ? '⏳ Saving...' : (glucoseValue ? `Save Reading: ${glucoseValue} mg/dL` : 'Enter Reading First')}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {quickLogType === 'meal' && (
-              <div className="space-y-6">
-                <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 shadow-lg">
-                  <CardContent className="pt-6 pb-6 space-y-5">
-                    <div>
-                      <label className="block font-semibold mb-3 text-gray-800">What did you eat? 🍽️</label>
-                      <textarea 
-                        placeholder="e.g., Grilled chicken salad with vinaigrette, whole grain roll..."
-                        dir="auto"
-                        value={mealDescription}
-                        onChange={(e) => setMealDescription(e.target.value)}
-                        className="w-full h-20 p-3 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 focus:border-green-500 bg-white shadow-lg resize-none text-left"
-                        style={{ unicodeBidi: 'plaintext' }}
-                        spellCheck={false}
-                        autoCorrect="off"
-                        autoCapitalize="none"
-                        autoFocus
-                        ref={mealTextareaRef}
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block font-semibold mb-2 text-gray-800">Carbs (grams) 🍞</label>
-                      <Input 
-                        type="text" 
-                        placeholder="e.g., 45"
-                        value={carbsValue}
-                        onChange={(e) => setCarbsValue(e.target.value)}
-                        className="h-12 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 bg-white shadow-lg"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        autoComplete="off"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold mb-2 text-gray-800">Time eaten 🕐</label>
-                      <Input 
-                        type="time" 
-                        value={mealTime}
-                        onChange={(e) => setMealTime(e.target.value)}
-                        className="h-12 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-300 bg-white shadow-lg"
-                      />
-                    </div>
-                    
-                    <Button 
-                      onClick={handleSaveMeal}
-                      className="w-full h-14 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl shadow-lg"
-                      disabled={!mealDescription || isLoading}
-                    >
-                      {isLoading ? '⏳ Saving...' : (mealDescription ? '✅ Log This Meal' : 'Describe Your Meal First')}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {quickLogType === 'medication' && (
-              <div className="space-y-6">
-                <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg">
-                  <CardContent className="pt-6 pb-6 space-y-5">
-                    <div className="text-center space-y-3">
-                      <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto">
-                        <Pill className="w-8 h-8 text-white" />
-                      </div>
-                      <p className="font-semibold text-gray-800">Mark medications as taken</p>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {medicationRegimens.length > 0 ? (
-                        medicationRegimens.map((regimen) => {
-                          const isTakenToday = medicationLogs.some(log => 
-                            log.regimenId === regimen.id && 
-                            formatDate(log.takenAt) === 'Today'
-                          );
-                          
-                          return (
-                            <Button 
-                              key={regimen.id}
-                              variant="outline" 
-                              className="w-full h-16 justify-between text-left rounded-xl border-2 border-purple-300 bg-white hover:bg-purple-50 shadow-lg"
-                              onClick={() => !isTakenToday && handleLogMedication(regimen.id)}
-                              disabled={isTakenToday}
-                            >
-                              <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                  <Pill className="w-5 h-5 text-purple-600" />
-                                </div>
-                                <div>
-                                  <div className="font-semibold">{regimen.medicationName}</div>
-                                  <div className="text-sm text-gray-500">{regimen.dosage} - {regimen.frequency}</div>
-                                </div>
-                              </div>
-                              {isTakenToday ? (
-                                <CheckCircle className="w-6 h-6 text-green-600" />
-                              ) : (
-                                <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
-                              )}
-                            </Button>
-                          );
-                        })
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                          <p>No medications found</p>
-                          <p className="text-sm">Ask your doctor to add your medications</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <Button className="w-full h-14 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-xl shadow-lg">
-                      💊 Update Medications
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {quickLogType === 'symptoms' && (
-              <div className="space-y-6">
-                <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 shadow-lg">
-                  <CardContent className="pt-6 pb-6 space-y-5">
-                    <div>
-                      <label className="block font-semibold mb-3 text-gray-800">How are you feeling? 💭</label>
-                      <textarea 
-                        placeholder="e.g., Feeling dizzy after lunch, slight headache, more tired than usual..."
-                        dir="auto"
-                        className="w-full h-24 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none text-left"
-                        style={{ unicodeBidi: 'plaintext' }}
-                        value={symptomDescription}
-                        onChange={(e) => setSymptomDescription(e.target.value)}
-                        spellCheck={false}
-                        autoCorrect="off"
-                        autoCapitalize="none"
-                        autoFocus
-                        ref={symptomTextareaRef}
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block font-semibold mb-3 text-gray-800">Severity</label>
-                      <select 
-                        className="w-full h-12 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg"
-                        value={symptomSeverity}
-                        onChange={(e) => setSymptomSeverity(e.target.value)}
-                      >
-                        <option value="Mild">Mild</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="Severe">Severe</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block font-semibold mb-3 text-gray-800">Additional Notes (Optional)</label>
-                      <textarea 
-                        placeholder="Any additional details..."
-                        dir="auto"
-                        className="w-full h-20 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg resize-none text-left"
-                        style={{ unicodeBidi: 'plaintext' }}
-                        value={symptomNotesInput}
-                        onChange={(e) => setSymptomNotesInput(e.target.value)}
-                        spellCheck={false}
-                        autoCorrect="off"
-                        autoCapitalize="none"
-                        ref={symptomNotesTextareaRef}
-                      />
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="font-semibold text-gray-800">Quick options:</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
-                          onClick={() => setSymptomDescription('Feeling tired')}
-                        >
-                          😴 Tired
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
-                          onClick={() => setSymptomDescription('Feeling nauseous')}
-                        >
-                          🤢 Nauseous
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
-                          onClick={() => setSymptomDescription('Feeling dizzy')}
-                        >
-                          😵‍💫 Dizzy
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          className="h-12 rounded-xl border-2 border-orange-300 bg-white hover:bg-orange-50 shadow-lg"
-                          onClick={() => setSymptomDescription('Feeling unwell')}
-                        >
-                          🤒 Unwell
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      className="w-full h-14 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 rounded-xl shadow-lg"
-                      disabled={!symptomDescription || isLoading}
-                      onClick={async () => {
-                        if (!currentUser?.id || !symptomDescription) {
-                          alert('Please enter symptom description');
-                          return;
-                        }
-                        setIsLoading(true);
-                        try {
-                          await logSymptom(currentUser.id, {
-                            symptom: symptomDescription,
-                            severity: symptomSeverity,
-                            notes: symptomNotesInput || undefined,
-                            occurredAt: new Date().toISOString()
-                          });
-                          setSymptomDescription('');
-                          setSymptomSeverity('Mild');
-                          setSymptomNotesInput('');
-                          setQuickLogType(null);
-                          alert('Symptom logged successfully!');
-                        } catch (error) {
-                          console.error('Error logging symptom:', error);
-                          alert('Failed to log symptom. Please try again.');
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }}
-                    >
-                      {isLoading ? '⏳ Saving...' : '📝 Log Symptoms'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const HomeTab = () => (
     <div className="space-y-6">
@@ -1095,11 +1142,18 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
       const lowEvents = values.filter(v => v < 70).length;
       const highEvents = values.filter(v => v > 180).length;
       
+      // Determine status based on TIR and high events
+      const getOverallStatus = () => {
+        if (inRange < 50 || highEvents > 0) return 'danger';
+        if (inRange >= 50 && inRange <= 70) return 'warning';
+        return 'good';
+      };
+      
       return [
         { metric: 'Average Glucose', value: `${avg} mg/dL`, status: avg >= 70 && avg <= 180 ? 'good' : 'warning' },
-        { metric: 'Time in Range', value: `${inRange}%`, status: inRange >= 70 ? 'good' : 'warning' },
+        { metric: 'Time in Range', value: `${inRange}%`, status: getOverallStatus() },
         { metric: 'Low Events', value: `${lowEvents}`, status: lowEvents > 0 ? 'warning' : 'good' },
-        { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'warning' : 'good' },
+        { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'danger' : 'good' },
         { metric: 'Meals Logged', value: `${recentMeals.length}`, status: 'good' },
         { metric: 'Medications Taken', value: '0 / 0', status: 'good' }, // TODO: Connect medication API
         { metric: 'Readings Logged', value: `${recentReadings.length}`, status: 'good' }
@@ -1119,11 +1173,18 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
       const lowEvents = values.filter(v => v < 70).length;
       const highEvents = values.filter(v => v > 180).length;
       
+      // Determine status based on TIR and high events
+      const getOverallStatus = () => {
+        if (inRange < 50 || highEvents > 0) return 'danger';
+        if (inRange >= 50 && inRange <= 70) return 'warning';
+        return 'good';
+      };
+      
       return [
         { metric: 'Average Glucose', value: `${avg} mg/dL`, status: avg >= 70 && avg <= 180 ? 'good' : 'warning' },
-        { metric: 'Time in Range', value: `${inRange}%`, status: inRange >= 70 ? 'good' : 'warning' },
+        { metric: 'Time in Range', value: `${inRange}%`, status: getOverallStatus() },
         { metric: 'Low Events', value: `${lowEvents}`, status: lowEvents > 0 ? 'warning' : 'good' },
-        { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'warning' : 'good' },
+        { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'danger' : 'good' },
         { metric: 'Meals Logged', value: `${recentMeals.length}`, status: 'good' },
         { metric: 'Medications Taken', value: '0 / 0', status: 'good' }, // TODO: Connect medication API
         { metric: 'Readings Logged', value: `${recentReadings.length}`, status: 'good' }
@@ -1134,7 +1195,17 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
       switch (status) {
         case 'good': return 'bg-green-50';
         case 'warning': return 'bg-yellow-50';
+        case 'danger': return 'bg-red-50';
         default: return 'bg-gray-50';
+      }
+    };
+
+    const getStatusIcon = (status: string) => {
+      switch (status) {
+        case 'good': return <CheckCircle className="w-5 h-5 text-green-600" />;
+        case 'warning': return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
+        case 'danger': return <AlertTriangle className="w-5 h-5 text-red-600" />;
+        default: return null;
       }
     };
 
@@ -1184,7 +1255,12 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       className={`border-b border-gray-200 ${getRowColor(row.status)} hover:bg-purple-50 transition-colors`}
                     >
                       <td className="p-4 text-gray-800">{row.metric}</td>
-                      <td className="p-4 text-right text-gray-900">{row.value}</td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <span className="text-gray-900">{row.value}</span>
+                          {getStatusIcon(row.status)}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1218,7 +1294,12 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
                       className={`border-b border-gray-200 ${getRowColor(row.status)} hover:bg-blue-50 transition-colors`}
                     >
                       <td className="p-4 text-gray-800">{row.metric}</td>
-                      <td className="p-4 text-right text-gray-900">{row.value}</td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <span className="text-gray-900">{row.value}</span>
+                          {getStatusIcon(row.status)}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1585,7 +1666,35 @@ Taken
       </nav>
 
       {/* Modals */}
-      <QuickLogModal />
+      <QuickLogModal 
+        quickLogType={quickLogType}
+        setQuickLogType={setQuickLogType}
+        glucoseValue={glucoseValue}
+        setGlucoseValue={setGlucoseValue}
+        glucoseContext={glucoseContext}
+        setGlucoseContext={setGlucoseContext}
+        mealDescription={mealDescription}
+        setMealDescription={setMealDescription}
+        carbsValue={carbsValue}
+        setCarbsValue={setCarbsValue}
+        mealTime={mealTime}
+        setMealTime={setMealTime}
+        symptomDescription={symptomDescription}
+        setSymptomDescription={setSymptomDescription}
+        symptomSeverity={symptomSeverity}
+        setSymptomSeverity={setSymptomSeverity}
+        symptomNotesInput={symptomNotesInput}
+        setSymptomNotesInput={setSymptomNotesInput}
+        medicationRegimens={medicationRegimens}
+        medicationLogs={medicationLogs}
+        isLoading={isLoading}
+        currentUser={currentUser}
+        handleSaveGlucose={handleSaveGlucose}
+        handleSaveMeal={handleSaveMeal}
+        handleLogMedication={handleLogMedication}
+        formatDate={formatDate}
+        formatTime={formatTime}
+      />
       <NotificationsModal />
     </div>
   );

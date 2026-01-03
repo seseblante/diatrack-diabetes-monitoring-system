@@ -52,12 +52,22 @@ public class AlertServiceImpl implements AlertService {
             return;
         }
 
+        String messageText = "";
+        if ("SEVERE_HIGH_GLUCOSE".equals(type)) {
+            messageText = "High Glucose: " + reading.getValueMgdl() + " mg/dL";
+        } else if ("SEVERE_LOW_GLUCOSE".equals(type)) {
+            messageText = "Low Glucose: " + reading.getValueMgdl() + " mg/dL";
+        } else {
+            messageText = "Alert: " + reading.getValueMgdl() + " mg/dL";
+        }
+
         Alert alert = Alert.builder()
                 .patientId(patientId)
                 .type(type)
                 .detectedAt(OffsetDateTime.now())
                 .triggerReading(reading)
                 .status("OPEN")
+                .notes(messageText) // <--- ADD THIS LINE (Populates the empty span)
                 .build();
 
         alertRepository.save(alert);

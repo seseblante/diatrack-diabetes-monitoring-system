@@ -43,12 +43,21 @@ public class ReportServiceImpl implements ReportService {
         User patient = userRepository.findById(patientId)
                 .orElseThrow(() -> new EntityNotFoundException("Patient not found: " + patientId));
 
-        // --- Fetch all data lists ---
+        // --- Fetch all data lists with null safety ---
         List<GlucoseReading> glucoseReadings = glucoseReadingRepository.findByPatientIdAndMeasuredAtAfterOrderByMeasuredAtDesc(patientId, since);
+        if (glucoseReadings == null) glucoseReadings = Collections.emptyList();
+        
         List<MedicationRegimen> regimens = medicationRegimenRepository.findByPatientIdAndIsActiveTrueOrderByMedicationName(patientId);
+        if (regimens == null) regimens = Collections.emptyList();
+        
         List<Meal> meals = mealRepository.findByPatientIdAndLoggedAtAfterOrderByLoggedAtDesc(patientId, since);
+        if (meals == null) meals = Collections.emptyList();
+        
         List<SymptomNote> symptomNotes = symptomNoteRepository.findByPatientIdAndOccurredAtAfterOrderByOccurredAtDesc(patientId, since);
+        if (symptomNotes == null) symptomNotes = Collections.emptyList();
+        
         List<MedicationLog> medicationLogs = medicationLogRepository.findLogsByPatientIdSince(patientId, since);
+        if (medicationLogs == null) medicationLogs = Collections.emptyList();
         // Activity logs are removed
 
         List<ClinicianNote> clinicianNotes;
@@ -56,6 +65,7 @@ public class ReportServiceImpl implements ReportService {
             PatientClinician link = patientClinicianRepository.findByPatientIdAndStatus(patientId, "ACTIVE")
                     .orElseThrow(() -> new EntityNotFoundException("Active patient-clinician link not found for patient: " + patientId));
             clinicianNotes = clinicianNoteRepository.findByPatientClinicianLinkIdOrderByCreatedAtDesc(link.getId());
+            if (clinicianNotes == null) clinicianNotes = Collections.emptyList();
         } catch (EntityNotFoundException e) {
             clinicianNotes = Collections.emptyList();
         }

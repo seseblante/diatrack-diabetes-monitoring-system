@@ -9,5 +9,6 @@ public record AlertDto(
         String type,
         OffsetDateTime detectedAt,
         String status,
-        OffsetDateTime acknowledgedAt
+        OffsetDateTime acknowledgedAt,
+        String notes
 ) {}

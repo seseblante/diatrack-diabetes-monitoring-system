@@ -23,19 +23,25 @@ public class DataExportController {
     public ResponseEntity<byte[]> exportPatientReportPdf(
             @PathVariable("patientId") UUID patientId
     ) {
-        byte[] pdfContents = reportService.generatePatientPdfReport(patientId);
+        try {
+            byte[] pdfContents = reportService.generatePatientPdfReport(patientId);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
 
-        String filename = "patient_report_" + patientId + ".pdf";
-        headers.setContentDispositionFormData("attachment", filename);
-        headers.setCacheControl("no-cache, no-store, must-revalidate");
-        headers.setPragma("no-cache");
-        headers.setExpires(0);
+            String filename = "patient_report_" + patientId + ".pdf";
+            headers.setContentDispositionFormData("attachment", filename);
+            headers.setCacheControl("no-cache, no-store, must-revalidate");
+            headers.setPragma("no-cache");
+            headers.setExpires(0);
 
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfContents);
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfContents);
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to generate PDF report for patient " + patientId);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to generate PDF report: " + e.getMessage(), e);
+        }
     }
 }
