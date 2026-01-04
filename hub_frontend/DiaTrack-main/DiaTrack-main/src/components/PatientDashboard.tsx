@@ -861,40 +861,50 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     }
   };
 
-  const handleSaveMeal = async () => {
-    if (!mealDescription || !currentUser?.id) return;
-    
-    setIsLoading(true);
-    try {
-      await logMeal(currentUser.id, {
-        loggedAt: mealTime || new Date().toISOString(),
-        description: mealDescription,
-        carbsG: carbsValue ? parseFloat(carbsValue) : undefined
-      });
-      
-      // Close modal immediately
-      setQuickLogType(null);
-      
-      // Show success toast
-      toast.success('Meal logged successfully!');
-      
-      // Reset form
-      setMealDescription('');
-      setCarbsValue('');
-      setMealTime('');
-      
-      // Refetch data to get updated list
-      await fetchData();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save meal');
-      toast.error('Failed to save meal');
-      console.error('Error saving meal:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const handleSaveMeal = async () => {
+        if (!mealDescription || !currentUser?.id) return;
 
-  const handleLogMedication = async (regimenId: string, scheduledTime: string) => {
+        setIsLoading(true);
+        try {
+            let loggedAtISO: string;
+
+            if (mealTime) {
+                // mealTime is "HH:mm"
+                const [hours, minutes] = mealTime.split(':').map(Number);
+
+                const date = new Date();
+                date.setHours(hours, minutes, 0, 0);
+
+                loggedAtISO = date.toISOString();
+            } else {
+                loggedAtISO = new Date().toISOString();
+            }
+
+            await logMeal(currentUser.id, {
+                loggedAt: loggedAtISO,
+                description: mealDescription,
+                carbsG: carbsValue ? parseFloat(carbsValue) : undefined
+            });
+
+            setQuickLogType(null);
+            toast.success('Meal logged successfully!');
+
+            setMealDescription('');
+            setCarbsValue('');
+            setMealTime('');
+
+            await fetchData();
+        } catch (err: any) {
+            setError(err.message || 'Failed to save meal');
+            toast.error('Failed to save meal');
+            console.error('Error saving meal:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    const handleLogMedication = async (regimenId: string, scheduledTime: string) => {
     if (!currentUser?.id) return;
 
     setIsLoading(true);
