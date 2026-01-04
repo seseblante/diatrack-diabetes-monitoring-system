@@ -8,6 +8,8 @@ export interface User {
   fullName: string;
   email: string;
   role: string;
+  dob?: string;
+  sex?: string;
 }
 
 export interface AuthResponse {

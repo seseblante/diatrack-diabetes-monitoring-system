@@ -79,11 +79,18 @@ public class MedicationServiceImpl implements MedicationService {
 
         MedicationLog log = MedicationLog.builder()
                 .regimen(regimen)
-                .takenAt(OffsetDateTime.now())
+                .takenAt(request.takenAt())  // Use the timestamp from request
                 .createdBy(currentUser)
                 .createdAt(OffsetDateTime.now())
                 .build();
         return MedicationMapper.toDto(logRepository.save(log));
+    }
+
+    @Override
+    public void deleteMedicationLog(UUID logId) {
+        MedicationLog log = logRepository.findById(logId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medication log not found"));
+        logRepository.delete(log);
     }
 
     @Override

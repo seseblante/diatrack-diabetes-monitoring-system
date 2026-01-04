@@ -16,4 +16,5 @@ public interface MedicationService {
     // Logging
     MedicationLogDto createMedicationLog(MedicationRequestDto.LogTaken request);
     List<MedicationLogDto> getMedicationLogs(UUID patientId);
+    void deleteMedicationLog(UUID logId);
 }

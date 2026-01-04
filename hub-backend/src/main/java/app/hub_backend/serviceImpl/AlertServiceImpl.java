@@ -35,14 +35,19 @@ public class AlertServiceImpl implements AlertService {
         UUID patientId = reading.getPatient().getId();
         BigDecimal readingValue = reading.getValueMgdl();
 
+        // Graceful fallback: use default safety values if settings not found
         PatientSettings settings = patientSettingsRepository.findById(patientId)
-                .orElseThrow(() -> new EntityNotFoundException("Patient settings not found for alert check: " + patientId));
+                .orElse(null);
 
-        if (readingValue.compareTo(settings.getSevereHighMgdl()) >= 0) {
+        // Default safety thresholds if no settings exist
+        BigDecimal severeHigh = settings != null ? settings.getSevereHighMgdl() : new BigDecimal("180");
+        BigDecimal severeLow = settings != null ? settings.getSevereLowMgdl() : new BigDecimal("70");
+
+        if (readingValue.compareTo(severeHigh) >= 0) {
             createAlert(patientId, "SEVERE_HIGH_GLUCOSE", reading);
         }
 
-        if (readingValue.compareTo(settings.getSevereLowMgdl()) <= 0) {
+        if (readingValue.compareTo(severeLow) <= 0) {
             createAlert(patientId, "SEVERE_LOW_GLUCOSE", reading);
         }
     }

@@ -3,9 +3,11 @@ package app.hub_backend.serviceImpl;
 import app.hub_backend.DTO.auth.LoginRequestDto;
 import app.hub_backend.DTO.auth.LoginResponseDto;
 import app.hub_backend.DTO.auth.RegisterRequestDto;
+import app.hub_backend.entities.PatientSettings;
 import app.hub_backend.entities.User;
 import app.hub_backend.entities.UserProfile;
 import app.hub_backend.mapper.UserMapper;
+import app.hub_backend.repositories.PatientSettingsRepository;
 import app.hub_backend.repositories.UserRepository;
 import app.hub_backend.repositories.UserProfileRepository;
 import app.hub_backend.service.AuthService;
@@ -32,6 +34,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository users;
     private final UserProfileRepository userProfiles;
+    private final PatientSettingsRepository patientSettingsRepository;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
     private final PatientTargetRangeService patientTargetRangeService;
@@ -97,6 +100,8 @@ public class AuthServiceImpl implements AuthService {
                 .role(req.role() == null ? "PATIENT" : req.role())
                 .isActive(true)
                 .isConsentGiven(req.isConsentGiven())
+                .dob(req.dob())
+                .sex(req.sex())
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
@@ -113,9 +118,19 @@ public class AuthServiceImpl implements AuthService {
         // timezone / createdAt / updatedAt default values come from the entity
         userProfiles.save(profile);
 
-        // Create default targets for patients
+        // Create default targets and settings for patients
         if ("PATIENT".equals(savedUser.getRole())) {
             patientTargetRangeService.createDefaultTargetsForNewPatient(savedUser);
+            
+            // Create default patient settings to prevent EntityNotFoundException
+            PatientSettings settings = PatientSettings.builder()
+                    .patient(savedUser)
+                    .severeLowMgdl(new java.math.BigDecimal("70.00"))
+                    .severeHighMgdl(new java.math.BigDecimal("180.00"))
+                    .trendWindowDays(7)
+                    .updatedAt(OffsetDateTime.now())
+                    .build();
+            patientSettingsRepository.save(settings);
         }
 
         return savedUser;

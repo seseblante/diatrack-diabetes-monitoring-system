@@ -1,4 +1,4 @@
-import { get, post, put } from './client';
+import { get, post, put, del } from './client';
 
 export interface MedicationRegimen {
   id: string;
@@ -80,4 +80,14 @@ export async function createMedicationRegimen(patientId: string, request: Medica
  */
 export async function updateMedicationRegimen(patientId: string, regimenId: string, request: MedicationRegimenRequest): Promise<MedicationRegimen> {
   return await put<MedicationRegimen>(`/api/patients/${patientId}/medications/regimens/${regimenId}`, request);
+}
+
+/**
+ * Delete a medication log entry
+ * @param patientId Patient UUID
+ * @param logId Log UUID
+ * @returns void
+ */
+export async function deleteMedicationLog(patientId: string, logId: string): Promise<void> {
+  return await del<void>(`/api/patients/${patientId}/medications/logs/${logId}`);
 }

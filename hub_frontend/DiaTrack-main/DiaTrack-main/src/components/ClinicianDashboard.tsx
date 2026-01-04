@@ -58,6 +58,8 @@ interface PatientData extends PatientClinicianLink {
   phone?: string;
   email?: string;
   symptoms?: SymptomNote[];
+  dob?: string;
+  sex?: string;
 }
 
 export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
@@ -118,13 +120,17 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 const notes = await getClinicianNotes(link.id);
                 const latestNote = notes.length > 0 ? notes[notes.length - 1].noteText : '';
                 
-                // Fetch patient profile for phone/email
+                // Fetch patient profile for phone/email/dob/sex
                 let patientPhone = 'N/A';
                 let patientEmail = 'N/A';
+                let patientDob = undefined;
+                let patientSex = undefined;
                 try {
                   const patientProfile = await getPatientProfile(link.patientId);
                   patientPhone = patientProfile.phone || 'N/A';
                   patientEmail = patientProfile.email || 'N/A';
+                  patientDob = patientProfile.dob;
+                  patientSex = patientProfile.sex;
                 } catch (err) {
                   console.error('Error fetching patient profile:', err);
                 }
@@ -159,6 +165,8 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   phone: patientPhone,
                   email: patientEmail,
                   symptoms,
+                  dob: patientDob,
+                  sex: patientSex,
                 } as PatientData;
               } catch (error) {
                 console.error(`Error fetching data for patient ${link.patientId}:`, error);
@@ -223,6 +231,18 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays === 1) return 'Yesterday';
     return `${diffDays} days ago`;
+  };
+
+  // Helper function to calculate age from date of birth
+  const calculateAge = (dob: string): number => {
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   // Filter and sort patients
@@ -304,10 +324,24 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               <CardHeader>
                 <CardTitle className="text-xl flex items-center space-x-2">
                   <User className="w-6 h-6 text-blue-600" />
-                  <span>Contact Information</span>
+                  <span>Patient Information</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-gray-50 rounded-xl border">
+                    <div className="text-sm text-gray-500 mb-1">Age</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {patient.dob ? `${calculateAge(patient.dob)} years` : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-xl border">
+                    <div className="text-sm text-gray-500 mb-1">Sex</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {patient.sex || 'N/A'}
+                    </div>
+                  </div>
+                </div>
                 <Button 
                   variant="outline" 
                   className="w-full h-16 justify-start text-left rounded-xl border-2 hover:bg-blue-50"

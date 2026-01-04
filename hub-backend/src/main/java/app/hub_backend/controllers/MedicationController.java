@@ -78,4 +78,13 @@ public class MedicationController {
 
         return ResponseEntity.ok(logs);
     }
+
+    @DeleteMapping("/logs/{logId}")
+    public ResponseEntity<Void> deleteMedicationLog(
+            @PathVariable("patientId") UUID patientId,
+            @PathVariable("logId") UUID logId
+    ) {
+        medicationService.deleteMedicationLog(logId);
+        return ResponseEntity.noContent().build();
+    }
 }

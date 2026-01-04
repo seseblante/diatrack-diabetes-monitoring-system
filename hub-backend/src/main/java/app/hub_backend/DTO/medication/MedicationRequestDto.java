@@ -25,6 +25,7 @@ public final class MedicationRequestDto {
     ) {}
 
     public record LogTaken(
-            @NotNull UUID regimenId
+            @NotNull UUID regimenId,
+            @NotNull java.time.OffsetDateTime takenAt
     ) {}
 }

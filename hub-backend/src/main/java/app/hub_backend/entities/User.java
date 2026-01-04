@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails; // <-- IMPORT
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection; // <-- IMPORT
 import java.util.List;     // <-- IMPORT
@@ -39,6 +40,10 @@ public class User implements UserDetails { // <-- IMPLEMENTS UserDetails
 
     @Column(nullable = false)
     private boolean isConsentGiven = false;
+
+    private LocalDate dob;
+
+    private String sex;
 
     @Column(nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();

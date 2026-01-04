@@ -4,6 +4,7 @@ import { Registration } from './components/Registration';
 import { PatientDashboard } from './components/PatientDashboard';
 import { ClinicianDashboard } from './components/ClinicianDashboard';
 import { getCurrentUser, logout as authLogout } from './api/auth';
+import { Toaster } from './components/ui/sonner';
 
 type ViewType = 'login' | 'register' | 'patient' | 'clinician';
 
@@ -47,22 +48,25 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-100">
-      <div className="w-[375px] h-[812px] bg-white shadow-2xl overflow-hidden relative">
-        {currentView === 'login' && (
-          <LoginInterface 
-            onLogin={handleLogin} 
-            onCreateAccount={handleCreateAccount}
-          />
-        )}
-        {currentView === 'register' && (
-          <Registration 
-            onBack={handleBackToLogin}
-          />
-        )}
-        {currentView === 'patient' && <PatientDashboard onLogout={handleLogout} />}
-        {currentView === 'clinician' && <ClinicianDashboard onLogout={handleLogout} />}
+    <>
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-100">
+        <div className="w-[375px] h-[812px] bg-white shadow-2xl overflow-hidden relative">
+          {currentView === 'login' && (
+            <LoginInterface 
+              onLogin={handleLogin} 
+              onCreateAccount={handleCreateAccount}
+            />
+          )}
+          {currentView === 'register' && (
+            <Registration 
+              onBack={handleBackToLogin}
+            />
+          )}
+          {currentView === 'patient' && <PatientDashboard onLogout={handleLogout} />}
+          {currentView === 'clinician' && <ClinicianDashboard onLogout={handleLogout} />}
+        </div>
       </div>
-    </div>
+      <Toaster />
+    </>
   );
 }

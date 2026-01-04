@@ -1,5 +1,6 @@
 package app.hub_backend.DTO.auth;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record UserDto(
@@ -8,5 +9,7 @@ public record UserDto(
         String fullName,
         String phone,
         String role,
-        boolean isActive
+        boolean isActive,
+        LocalDate dob,
+        String sex
 ) {}

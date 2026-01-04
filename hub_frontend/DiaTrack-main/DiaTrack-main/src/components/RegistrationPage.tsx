@@ -344,9 +344,9 @@ export function RegistrationPage({ onBack, onRegister }: RegistrationPageProps) 
                     <SelectValue placeholder="Select sex" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="M">Male</SelectItem>
-                    <SelectItem value="F">Female</SelectItem>
-                    <SelectItem value="X">Prefer not to say / Other</SelectItem>
+                    <SelectItem value="MALE">Male</SelectItem>
+                    <SelectItem value="FEMALE">Female</SelectItem>
+                    <SelectItem value="OTHER">Prefer not to say / Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

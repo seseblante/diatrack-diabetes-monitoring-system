@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
@@ -11,7 +12,7 @@ import logoImage from '../assets/logoImage.png';
 import { getCurrentUser } from '../api/auth';
 import { getGlucoseReadings, logGlucoseReading, GlucoseReading, GlucoseContextType } from '../api/glucose';
 import { getMealLogs, logMeal, Meal } from '../api/meals';
-import { getMedicationRegimens, getMedicationLogs, logMedicationTaken, MedicationRegimen, MedicationLog } from '../api/medications';
+import { getMedicationRegimens, getMedicationLogs, logMedicationTaken, deleteMedicationLog, MedicationRegimen, MedicationLog } from '../api/medications';
 import { getMessages, markMessagesAsRead, QuickMessage } from '../api/messages';
 import { getPatientClinicians, PatientClinicianLink } from '../api/patient';
 import { exportPatientReportPdf } from '../api/export';
@@ -51,6 +52,43 @@ interface PatientDashboardProps {
 type MobileTab = 'home' | 'trends' | 'history' | 'menu';
 type QuickLogType = 'glucose' | 'meal' | 'medication' | 'symptoms' | null;
 
+// Normalize time string to HH:mm format (24-hour)
+// Handles: "08:00", "08:00:00", "8:00 AM", "08:00 AM"
+const normalizeTime = (timeStr: string): string => {
+  // Remove any whitespace
+  timeStr = timeStr.trim();
+  
+  // Check if it's 12-hour format (contains AM/PM)
+  const has12HourFormat = /AM|PM/i.test(timeStr);
+  
+  if (has12HourFormat) {
+    // Parse 12-hour format
+    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match) {
+      let hours = parseInt(match[1], 10);
+      const minutes = match[2];
+      const period = match[3].toUpperCase();
+      
+      // Convert to 24-hour
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}`;
+    }
+  }
+  
+  // Parse 24-hour format (with or without seconds)
+  const match = timeStr.match(/(\d{1,2}):(\d{2})(:\d{2})?/);
+  if (match) {
+    const hours = match[1].padStart(2, '0');
+    const minutes = match[2];
+    return `${hours}:${minutes}`;
+  }
+  
+  // Fallback: return as-is
+  return timeStr;
+};
+
 interface QuickLogModalProps {
   quickLogType: QuickLogType;
   setQuickLogType: (type: QuickLogType) => void;
@@ -76,7 +114,8 @@ interface QuickLogModalProps {
   currentUser: any;
   handleSaveGlucose: () => Promise<void>;
   handleSaveMeal: () => Promise<void>;
-  handleLogMedication: (regimenId: string) => Promise<void>;
+  handleLogMedication: (regimenId: string, scheduledTime: string) => Promise<void>;
+  handleSaveSymptom: () => Promise<void>;
   formatDate: (isoString: string) => string;
   formatTime: (isoString: string) => string;
 }
@@ -107,6 +146,7 @@ function QuickLogModal({
   handleSaveGlucose,
   handleSaveMeal,
   handleLogMedication,
+  handleSaveSymptom,
   formatDate,
   formatTime
 }: QuickLogModalProps) {
@@ -280,37 +320,98 @@ function QuickLogModal({
                   
                   <div className="space-y-3">
                     {medicationRegimens.length > 0 ? (
-                      medicationRegimens.map((regimen) => {
-                        const isTakenToday = medicationLogs.some(log => 
-                          log.regimenId === regimen.id && 
-                          formatDate(log.takenAt) === 'Today'
-                        );
-                        
-                        return (
-                          <Button 
-                            key={regimen.id}
-                            variant="outline" 
-                            className="w-full h-16 justify-between text-left rounded-xl border-2 border-purple-300 bg-white hover:bg-purple-50 shadow-lg"
-                            onClick={() => !isTakenToday && handleLogMedication(regimen.id)}
-                            disabled={isTakenToday}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                <Pill className="w-5 h-5 text-purple-600" />
+                      (() => {
+                        // Explode regimens: create one row per scheduled time
+                        const explodedDoses: Array<{
+                          regimenId: string;
+                          medicationName: string;
+                          doseAmount: number;
+                          doseUnit: string;
+                          scheduledTime: string;
+                          isTaken: boolean;
+                        }> = [];
+
+                        medicationRegimens.forEach((regimen) => {
+                          regimen.timesOfDay.forEach((time) => {
+                            // Check if this specific dose was taken today
+                            // Match by regimenId, date (Today), and scheduled time (normalized)
+                            const normalizedScheduledTime = normalizeTime(time);
+                            
+                            const isTaken = medicationLogs.some(log => {
+                              if (log.regimenId !== regimen.id) return false;
+                              if (formatDate(log.takenAt) !== 'Today') return false;
+                              
+                              // Normalize the log's taken time to HH:mm format
+                              const logDate = new Date(log.takenAt);
+                              const logHours = logDate.getHours().toString().padStart(2, '0');
+                              const logMinutes = logDate.getMinutes().toString().padStart(2, '0');
+                              const normalizedLogTime = `${logHours}:${logMinutes}`;
+                              
+                              // Debug logging
+                              console.log('Comparing:', normalizedLogTime, normalizedScheduledTime);
+                              
+                              // Match if times are equal (exact match)
+                              return normalizedLogTime === normalizedScheduledTime;
+                            });
+
+                            explodedDoses.push({
+                              regimenId: regimen.id,
+                              medicationName: regimen.medicationName,
+                              doseAmount: regimen.doseAmount,
+                              doseUnit: regimen.doseUnit,
+                              scheduledTime: time,
+                              isTaken
+                            });
+                          });
+                        });
+
+                        // Sort by scheduled time
+                        explodedDoses.sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
+
+                        return explodedDoses.map((dose, index) => {
+                          // Format time for display (e.g., "08:00" -> "8:00 AM")
+                          const formatScheduledTime = (time: string) => {
+                            const [hours, minutes] = time.split(':').map(Number);
+                            const period = hours >= 12 ? 'PM' : 'AM';
+                            const displayHours = hours % 12 || 12;
+                            return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+                          };
+
+                          return (
+                            <Button 
+                              key={`${dose.regimenId}-${dose.scheduledTime}-${index}`}
+                              variant="outline" 
+                              className={`w-full h-16 justify-between text-left rounded-xl border-2 shadow-lg transition-all ${
+                                dose.isTaken 
+                                  ? 'bg-gray-100 border-gray-300 opacity-60 hover:opacity-70' 
+                                  : 'border-purple-300 bg-white hover:bg-purple-50'
+                              } cursor-pointer`}
+                              onClick={() => handleLogMedication(dose.regimenId, dose.scheduledTime)}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    dose.isTaken ? 'bg-gray-200' : 'bg-purple-100'
+                                  }`}>
+                                    <Pill className={`w-5 h-5 ${dose.isTaken ? 'text-gray-500' : 'text-purple-600'}`} />
+                                  </div>
+                                  <div className={`min-w-0 flex-1 ${dose.isTaken ? 'opacity-70' : ''}`}>
+                                    <div className="font-semibold truncate">{dose.medicationName} ({formatScheduledTime(dose.scheduledTime)})</div>
+                                    <div className="text-sm text-gray-500 truncate">{dose.doseAmount} {dose.doseUnit}</div>
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0 ml-4">
+                                  {dose.isTaken ? (
+                                    <CheckCircle className="w-6 h-6 text-green-600" />
+                                  ) : (
+                                    <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
+                                  )}
+                                </div>
                               </div>
-                              <div>
-                                <div className="font-semibold">{regimen.medicationName}</div>
-                                <div className="text-sm text-gray-500">{regimen.dosage} - {regimen.frequency}</div>
-                              </div>
-                            </div>
-                            {isTakenToday ? (
-                              <CheckCircle className="w-6 h-6 text-green-600" />
-                            ) : (
-                              <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
-                            )}
-                          </Button>
-                        );
-                      })
+                            </Button>
+                          );
+                        });
+                      })()
                     ) : (
                       <div className="text-center py-8 text-gray-500">
                         <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -319,10 +420,6 @@ function QuickLogModal({
                       </div>
                     )}
                   </div>
-                  
-                  <Button className="w-full h-14 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-xl shadow-lg">
-                    💊 Update Medications
-                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -418,28 +515,7 @@ function QuickLogModal({
                   <Button 
                     className="w-full h-14 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 rounded-xl shadow-lg"
                     disabled={!symptomDescription || isLoading}
-                    onClick={async () => {
-                      if (!currentUser?.id || !symptomDescription) {
-                        alert('Please enter symptom description');
-                        return;
-                      }
-                      try {
-                        await logSymptom(currentUser.id, {
-                          symptom: symptomDescription,
-                          severity: symptomSeverity,
-                          notes: symptomNotesInput || undefined,
-                          occurredAt: new Date().toISOString()
-                        });
-                        setSymptomDescription('');
-                        setSymptomSeverity('Mild');
-                        setSymptomNotesInput('');
-                        setQuickLogType(null);
-                        alert('Symptom logged successfully!');
-                      } catch (error) {
-                        console.error('Error logging symptom:', error);
-                        alert('Failed to log symptom. Please try again.');
-                      }
-                    }}
+                    onClick={handleSaveSymptom}
                   >
                     {isLoading ? '⏳ Saving...' : '📝 Log Symptoms'}
                   </Button>
@@ -758,21 +834,27 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     
     setIsLoading(true);
     try {
-      const newReading = await logGlucoseReading(currentUser.id, {
+      await logGlucoseReading(currentUser.id, {
         measuredAt: new Date().toISOString(),
         valueMgdl: parseFloat(glucoseValue),
         context: glucoseContext
       });
       
+      // Close modal immediately
+      setQuickLogType(null);
+      
+      // Show success toast
+      toast.success('Blood sugar logged successfully!');
+      
       // Reset form
       setGlucoseValue('');
       setGlucoseContext('Fasting');
-      setQuickLogType(null);
       
       // Refetch data to get updated list
       await fetchData();
     } catch (err: any) {
       setError(err.message || 'Failed to save glucose reading');
+      toast.error('Failed to save glucose reading');
       console.error('Error saving glucose:', err);
     } finally {
       setIsLoading(false);
@@ -784,48 +866,127 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     
     setIsLoading(true);
     try {
-      const newMeal = await logMeal(currentUser.id, {
+      await logMeal(currentUser.id, {
         loggedAt: mealTime || new Date().toISOString(),
         description: mealDescription,
         carbsG: carbsValue ? parseFloat(carbsValue) : undefined
       });
       
+      // Close modal immediately
+      setQuickLogType(null);
+      
+      // Show success toast
+      toast.success('Meal logged successfully!');
+      
       // Reset form
       setMealDescription('');
       setCarbsValue('');
       setMealTime('');
-      setQuickLogType(null);
       
       // Refetch data to get updated list
       await fetchData();
     } catch (err: any) {
       setError(err.message || 'Failed to save meal');
+      toast.error('Failed to save meal');
       console.error('Error saving meal:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLogMedication = async (regimenId: string) => {
+  const handleLogMedication = async (regimenId: string, scheduledTime: string) => {
     if (!currentUser?.id) return;
 
     setIsLoading(true);
     try {
-      const takenAt = new Date().toISOString();
-      const newLog = await logMedicationTaken(currentUser.id, {
-        regimenId,
-        takenAt
+      // Normalize the scheduled time to HH:mm format
+      const normalizedScheduledTime = normalizeTime(scheduledTime);
+      const [schedHours, schedMinutes] = normalizedScheduledTime.split(':').map(Number);
+      
+      // Check if this medication slot is already taken today
+      const existingLog = medicationLogs.find(log => {
+        if (log.regimenId !== regimenId) return false;
+        
+        // Check if log is from today
+        const logDate = new Date(log.takenAt);
+        const today = new Date();
+        if (logDate.toDateString() !== today.toDateString()) return false;
+        
+        // Normalize the log's time to HH:mm format
+        const logHours = logDate.getHours().toString().padStart(2, '0');
+        const logMinutes = logDate.getMinutes().toString().padStart(2, '0');
+        const normalizedLogTime = `${logHours}:${logMinutes}`;
+        
+        // Exact match comparison
+        return normalizedLogTime === normalizedScheduledTime;
       });
 
-      // Optimistic UI update to avoid refetch-induced jank
-      setMedicationLogs((prev) => [{ ...newLog }, ...prev]);
+      if (existingLog) {
+        // ALREADY TAKEN: Delete the log (toggle off)
+        await deleteMedicationLog(currentUser.id, existingLog.id);
+        toast.success('Medication unmarked');
+        
+        // Remove from state optimistically
+        setMedicationLogs((prev) => prev.filter(log => log.id !== existingLog.id));
+      } else {
+        // NOT TAKEN: Create the log (toggle on)
+        const takenAt = new Date();
+        takenAt.setHours(schedHours, schedMinutes, 0, 0);
+        
+        const newLog = await logMedicationTaken(currentUser.id, {
+          regimenId,
+          takenAt: takenAt.toISOString()
+        });
+
+        toast.success('Medication logged successfully!');
+        
+        // Add to state optimistically
+        setMedicationLogs((prev) => [{ ...newLog }, ...prev]);
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to log medication');
-      console.error('Error logging medication:', err);
+      setError(err.message || 'Failed to update medication');
+      toast.error('Failed to update medication');
+      console.error('Error updating medication:', err);
     } finally {
       setIsLoading(false);
-      // Background refresh (non-blocking)
-      getMedicationLogs(currentUser.id).then(setMedicationLogs).catch(() => {});
+      // Refetch to ensure consistency
+      if (currentUser?.id) {
+        getMedicationLogs(currentUser.id).then(setMedicationLogs).catch(() => {});
+      }
+    }
+  };
+
+  const handleSaveSymptom = async () => {
+    if (!currentUser?.id || !symptomDescription) return;
+    
+    setIsLoading(true);
+    try {
+      await logSymptom(currentUser.id, {
+        symptom: symptomDescription,
+        severity: symptomSeverity,
+        notes: symptomNotesInput || undefined,
+        occurredAt: new Date().toISOString()
+      });
+      
+      // Close modal immediately
+      setQuickLogType(null);
+      
+      // Show success toast
+      toast.success('Symptom logged successfully!');
+      
+      // Reset form
+      setSymptomDescription('');
+      setSymptomSeverity('Mild');
+      setSymptomNotesInput('');
+      
+      // Refetch data to get updated list
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to log symptom');
+      toast.error('Failed to log symptom');
+      console.error('Error logging symptom:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1692,6 +1853,7 @@ Taken
         handleSaveGlucose={handleSaveGlucose}
         handleSaveMeal={handleSaveMeal}
         handleLogMedication={handleLogMedication}
+        handleSaveSymptom={handleSaveSymptom}
         formatDate={formatDate}
         formatTime={formatTime}
       />

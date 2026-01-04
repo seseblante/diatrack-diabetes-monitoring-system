@@ -216,9 +216,9 @@ export function Registration({ onBack }: RegistrationProps) {
                   className="w-full h-12 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select sex</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                  <option value="X">Prefer not to say / Other</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Prefer not to say / Other</option>
                 </select>
               </div>
 

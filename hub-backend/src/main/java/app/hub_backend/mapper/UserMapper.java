@@ -13,7 +13,9 @@ public class UserMapper {
                 u.getFullName(),
                 u.getPhone(),
                 u.getRole(),
-                u.isActive()
+                u.isActive(),
+                u.getDob(),
+                u.getSex()
         );
     }
 
