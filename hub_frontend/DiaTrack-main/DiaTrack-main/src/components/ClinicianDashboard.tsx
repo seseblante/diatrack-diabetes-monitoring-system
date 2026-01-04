@@ -11,7 +11,7 @@ import { ClinicianAppointments } from './ClinicianAppointments';
 import { ClinicianMedicationManagement } from './ClinicianMedicationManagement';
 import { PatientLinkManagement } from './PatientLinkManagement';
 import { getCurrentUser } from '../api/auth';
-import { getClinicianPatients, getClinicianNotes, createClinicianNote, type PatientClinicianLink, type ClinicianNote } from '../api/clinician';
+import { getClinicianPatients, getClinicianNotes, createClinicianNote, updateNextAppointment, type PatientClinicianLink, type ClinicianNote } from '../api/clinician';
 import { getGlucoseReadings, type GlucoseReading } from '../api/glucose';
 import { getAlerts, type Alert } from '../api/alerts';
 import { getSymptomLogs, type SymptomNote } from '../api/symptoms';
@@ -39,7 +39,8 @@ import {
   Settings,
   Pill,
   UserPlus,
-  Stethoscope
+  Stethoscope,
+  Edit
 } from 'lucide-react';
 
 interface ClinicianDashboardProps {
@@ -73,6 +74,8 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [patientNotes, setPatientNotes] = useState<Record<string, string>>({});
+  const [isEditingAppointment, setIsEditingAppointment] = useState(false);
+  const [editedAppointmentDate, setEditedAppointmentDate] = useState('');
   
   // Ref to store scroll position
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -281,7 +284,11 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
             </div>
             <Button 
               variant="ghost" 
-              onClick={() => setSelectedPatient(null)}
+              onClick={() => {
+                setSelectedPatient(null);
+                setIsEditingAppointment(false);
+                setEditedAppointmentDate('');
+              }}
               className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200"
             >
               <X className="w-6 h-6" />
@@ -331,10 +338,80 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                     <div className="text-sm text-gray-500">Send email</div>
                   </div>
                 </Button>
-                <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">
-                  <Calendar className="w-6 h-6 text-orange-600" />
-                  <div>
-                    <div className="font-medium">Next appointment</div>
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-6 h-6 text-orange-600" />
+                      <div className="font-medium">Next appointment</div>
+                    </div>
+                    {!isEditingAppointment && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsEditingAppointment(true);
+                          const currentDate = patient.nextAppointmentAt 
+                            ? new Date(patient.nextAppointmentAt).toISOString().split('T')[0]
+                            : '';
+                          setEditedAppointmentDate(currentDate);
+                        }}
+                        className="h-8 px-2"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {isEditingAppointment ? (
+                    <div className="space-y-2">
+                      <Input
+                        type="date"
+                        value={editedAppointmentDate}
+                        onChange={(e) => setEditedAppointmentDate(e.target.value)}
+                        className="w-full"
+                      />
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              if (editedAppointmentDate) {
+                                const appointmentDateTime = new Date(editedAppointmentDate + 'T00:00:00').toISOString();
+                                await updateNextAppointment(patient.id, appointmentDateTime);
+                                
+                                setPatients(prev => prev.map(p => 
+                                  p.id === patient.id 
+                                    ? { ...p, nextAppointmentAt: appointmentDateTime }
+                                    : p
+                                ));
+                                
+                                if (selectedPatient?.id === patient.id) {
+                                  setSelectedPatient({ ...patient, nextAppointmentAt: appointmentDateTime });
+                                }
+                              }
+                              setIsEditingAppointment(false);
+                            } catch (error) {
+                              console.error('Error updating appointment:', error);
+                              alert('Failed to update appointment');
+                            }
+                          }}
+                          className="flex-1"
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditingAppointment(false);
+                            setEditedAppointmentDate('');
+                          }}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
                     <div className="text-sm text-gray-600">
                       {patient.nextAppointmentAt 
                         ? new Date(patient.nextAppointmentAt).toLocaleDateString('en-US', { 
@@ -344,7 +421,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                           })
                         : 'Not scheduled'}
                     </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

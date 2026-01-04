@@ -2,6 +2,7 @@ package app.hub_backend.controllers;
 
 import app.hub_backend.DTO.LinkRequestDto;
 import app.hub_backend.DTO.PatientClinicianDto;
+import app.hub_backend.DTO.UpdateAppointmentDto;
 import app.hub_backend.service.PatientClinicianService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,5 +53,17 @@ public class PatientClinicianController {
                 patientClinicianService.getPatientsForClinician(clinicianId);
 
         return ResponseEntity.ok(links);
+    }
+
+    // Update next appointment for a patient-clinician link
+    @PutMapping("/{linkId}/appointment")
+    public ResponseEntity<PatientClinicianDto> updateNextAppointment(
+            @PathVariable("linkId") UUID linkId,
+            @Valid @RequestBody UpdateAppointmentDto request
+    ) {
+        PatientClinicianDto updatedLink =
+                patientClinicianService.updateNextAppointment(linkId, request.nextAppointmentAt());
+
+        return ResponseEntity.ok(updatedLink);
     }
 }

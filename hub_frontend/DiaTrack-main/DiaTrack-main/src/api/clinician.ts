@@ -7,6 +7,7 @@ export interface PatientClinicianLink {
   patientName: string;
   patientEmail: string;
   linkedAt: string;
+  nextAppointmentAt?: string;
 }
 
 export interface ClinicianNote {
@@ -75,4 +76,14 @@ export async function deleteClinicianNote(noteId: string): Promise<void> {
  */
 export async function createPatientClinicianLink(patientId: string, clinicianId: string): Promise<PatientClinicianLink> {
   return await post<PatientClinicianLink>('/api/links/patient-clinician', { patientId, clinicianId });
+}
+
+/**
+ * Update next appointment for a patient-clinician link
+ * @param linkId Patient-Clinician link UUID
+ * @param nextAppointmentAt ISO 8601 date string for next appointment
+ * @returns Updated patient-clinician link
+ */
+export async function updateNextAppointment(linkId: string, nextAppointmentAt: string): Promise<PatientClinicianLink> {
+  return await put<PatientClinicianLink>(`/api/links/${linkId}/appointment`, { nextAppointmentAt });
 }

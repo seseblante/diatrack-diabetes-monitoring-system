@@ -55,4 +55,16 @@ public class PatientClinicianServiceImpl implements PatientClinicianService {
                 .map(PatientClinicianMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional
+    public PatientClinicianDto updateNextAppointment(UUID linkId, java.time.OffsetDateTime nextAppointmentAt) {
+        PatientClinician link = patientClinicianRepository.findById(linkId)
+                .orElseThrow(() -> new RuntimeException("Patient-Clinician link not found"));
+        
+        link.setNextAppointmentAt(nextAppointmentAt);
+        PatientClinician updatedLink = patientClinicianRepository.save(link);
+        
+        return PatientClinicianMapper.toDto(updatedLink);
+    }
 }
