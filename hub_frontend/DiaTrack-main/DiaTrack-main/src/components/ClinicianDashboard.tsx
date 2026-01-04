@@ -533,7 +533,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
             {/* Actions */}
             <div className="grid grid-cols-1 gap-4">
               <Button 
-                className="h-18 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg"
+                className="h-18 p-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg flex items-center justify-start"
                 onClick={async () => {
                   if (selectedPatient) {
                     try {
@@ -546,7 +546,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   }
                 }}
               >
-                <Download className="w-6 h-6 mr-3" />
+                <Download className="w-6 h-6 mr-3 flex-shrink-0" />
                 <div className="text-left">
                   <div className="text-lg font-semibold">Export Report</div>
                   <div className="text-sm opacity-90">Generate PDF for patient</div>
@@ -554,13 +554,13 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-18 border-2 rounded-xl shadow-lg hover:bg-indigo-50"
+                className="h-18 p-4 border-2 rounded-xl shadow-lg hover:bg-indigo-50 flex items-center justify-start"
                 onClick={() => {
                   setSelectedPatient(null);
                   setShowMessaging(true);
                 }}
               >
-                <MessageSquare className="w-6 h-6 mr-3 text-indigo-600" />
+                <MessageSquare className="w-6 h-6 mr-3 text-indigo-600 flex-shrink-0" />
                 <div className="text-left">
                   <div className="text-lg font-semibold">Send Message</div>
                   <div className="text-sm text-gray-500">Quick patient message</div>
@@ -568,7 +568,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-18 border-2 rounded-xl shadow-lg hover:bg-green-50"
+                className="h-18 p-4 border-2 rounded-xl shadow-lg hover:bg-green-50 flex items-center justify-start"
                 onClick={() => {
                   if (patient.phone && patient.phone !== 'N/A') {
                     window.location.href = `tel:${patient.phone}`;
@@ -577,7 +577,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   }
                 }}
               >
-                <Phone className="w-6 h-6 mr-3 text-green-600" />
+                <Phone className="w-6 h-6 mr-3 text-green-600 flex-shrink-0" />
                 <div className="text-left">
                   <div className="text-lg font-semibold">Call Patient</div>
                   <div className="text-sm text-gray-500">Direct phone call</div>
@@ -585,14 +585,14 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-18 border-2 rounded-xl shadow-lg hover:bg-orange-50"
+                className="h-18 p-4 border-2 rounded-xl shadow-lg hover:bg-orange-50 flex items-center justify-start"
                 onClick={() => {
                   setMedicationPatient(patient);
                   setSelectedPatient(null);
                   setShowMedicationManagement(true);
                 }}
               >
-                <Pill className="w-6 h-6 mr-3 text-orange-600" />
+                <Pill className="w-6 h-6 mr-3 text-orange-600 flex-shrink-0" />
                 <div className="text-left">
                   <div className="text-lg font-semibold">Manage Medications</div>
                   <div className="text-sm text-gray-500">View and edit prescriptions</div>
@@ -796,14 +796,14 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
 
         {/* Quick Actions */}
         <Card className="mt-6 shadow-lg border-2 border-indigo-200">
-          <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
-            <CardTitle className="flex items-center space-x-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center space-x-2 font-bold">
               <Activity className="w-5 h-5 text-indigo-600" />
               <span>Quick Actions</span>
             </CardTitle>
-            <CardDescription>Common tasks and settings</CardDescription>
+            <CardDescription className="mt-2">Common tasks and settings</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6 px-6 pb-6">
             <div className="grid grid-cols-2 gap-4">
               <Button 
                 variant="outline" 
