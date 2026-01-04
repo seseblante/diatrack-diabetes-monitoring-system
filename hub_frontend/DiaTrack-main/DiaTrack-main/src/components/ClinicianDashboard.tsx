@@ -263,8 +263,9 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
   };
 
   const PatientDetailModal = ({ patient }: { patient: PatientData }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-end justify-center">
-      <div className="bg-white w-full max-w-[375px] h-[700px] rounded-t-3xl overflow-hidden animate-in slide-in-from-bottom duration-300 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-0" onClick={() => setSelectedPatient(null)} />
+      <div className="relative bg-white w-full max-w-[375px] h-[700px] rounded-t-3xl overflow-hidden shadow-2xl isolate transform-gpu z-10" onClick={(e: any) => e.stopPropagation()}>
         {/* Handle bar for swipe indication */}
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
