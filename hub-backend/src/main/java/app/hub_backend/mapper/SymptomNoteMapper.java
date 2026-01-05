@@ -13,6 +13,7 @@ public class SymptomNoteMapper {
                 entity.getPatient().getId(),
                 entity.getOccurredAt(),
                 entity.getSymptom(),
+                entity.getSeverity(),
                 entity.getNotes()
         );
     }
