@@ -1,5 +1,6 @@
 package app.hub_backend.controllers;
 
+import app.hub_backend.DTO.AppointmentDto;
 import app.hub_backend.DTO.LinkRequestDto;
 import app.hub_backend.DTO.PatientClinicianDto;
 import app.hub_backend.DTO.UpdateAppointmentDto;
@@ -65,5 +66,16 @@ public class PatientClinicianController {
                 patientClinicianService.updateNextAppointment(linkId, request.nextAppointmentAt());
 
         return ResponseEntity.ok(updatedLink);
+    }
+
+    // Get appointments for a specific clinician
+    @GetMapping("/clinicians/{clinicianId}/appointments")
+    public ResponseEntity<List<AppointmentDto>> getAppointmentsForClinician(
+            @PathVariable("clinicianId") UUID clinicianId
+    ) {
+        List<AppointmentDto> appointments =
+                patientClinicianService.getAppointmentsForClinician(clinicianId);
+
+        return ResponseEntity.ok(appointments);
     }
 }

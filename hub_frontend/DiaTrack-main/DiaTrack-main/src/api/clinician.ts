@@ -87,3 +87,22 @@ export async function createPatientClinicianLink(patientId: string, clinicianId:
 export async function updateNextAppointment(linkId: string, nextAppointmentAt: string): Promise<PatientClinicianLink> {
   return await put<PatientClinicianLink>(`/api/links/${linkId}/appointment`, { nextAppointmentAt });
 }
+
+export interface Appointment {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientPhone: string;
+  patientEmail: string;
+  nextAppointmentAt: string;
+  status: string;
+}
+
+/**
+ * Get all appointments for a clinician
+ * @param clinicianId Clinician UUID
+ * @returns List of appointments
+ */
+export async function getClinicianAppointments(clinicianId: string): Promise<Appointment[]> {
+  return await get<Appointment[]>(`/api/links/clinicians/${clinicianId}/appointments`);
+}

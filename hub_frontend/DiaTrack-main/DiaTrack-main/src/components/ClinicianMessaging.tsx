@@ -137,7 +137,6 @@ export function ClinicianMessaging({ onBack }: ClinicianMessagingProps) {
       icon: '📅',
       color: 'from-purple-50 to-violet-100 border-purple-200',
       messages: [
-        'See you Oct 15 at 2PM',
         'Looking forward to your visit',
         'Bring your glucose meter',
         'Follow-up scheduled next week'

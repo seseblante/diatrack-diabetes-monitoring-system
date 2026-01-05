@@ -457,9 +457,19 @@ public class PdfReportGenerator {
     /* ================== FORMATTERS ================== */
 
     private String formatRegimen(MedicationRegimen r) {
+        String frequency = formatFrequency(r.getFrequencyType(), r.getFrequencyValue());
         return r.getMedicationName() + " — " +
                 r.getDoseAmount() + " " + r.getDoseUnit() +
-                " (" + r.getFrequencyType().name() + ")";
+                " • " + frequency;
+    }
+
+    private String formatFrequency(FrequencyType type, int value) {
+        return switch (type) {
+            case DAILY -> value == 1 ? "Once daily" : value + " times daily";
+            case WEEKLY -> value == 1 ? "Once weekly" : "Every " + value + " weeks";
+            case MONTHLY -> value == 1 ? "Once monthly" : "Every " + value + " months";
+            case CUSTOM_DAYS -> "Every " + value + " days";
+        };
     }
 
     private String formatGlucoseReading(GlucoseReading r) {
@@ -486,6 +496,7 @@ public class PdfReportGenerator {
     private String formatSymptomNote(SymptomNote s) {
         return s.getOccurredAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")) +
                 " • " + s.getSymptom() +
+                " [" + s.getSeverity() + "]" +
                 (s.getNotes() != null ? " — " + s.getNotes() : "");
     }
 

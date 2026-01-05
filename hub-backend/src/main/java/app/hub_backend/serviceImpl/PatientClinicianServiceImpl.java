@@ -1,5 +1,6 @@
 package app.hub_backend.serviceImpl;
 
+import app.hub_backend.DTO.AppointmentDto;
 import app.hub_backend.DTO.PatientClinicianDto;
 import app.hub_backend.entities.PatientClinician;
 import app.hub_backend.entities.User;
@@ -66,5 +67,24 @@ public class PatientClinicianServiceImpl implements PatientClinicianService {
         PatientClinician updatedLink = patientClinicianRepository.save(link);
         
         return PatientClinicianMapper.toDto(updatedLink);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentDto> getAppointmentsForClinician(UUID clinicianId) {
+        return patientClinicianRepository.findByClinicianId(clinicianId)
+                .stream()
+                .filter(link -> link.getNextAppointmentAt() != null)
+                .map(link -> new AppointmentDto(
+                        link.getId(),
+                        link.getPatient().getId(),
+                        link.getPatient().getName(),
+                        link.getPatient().getPhone(),
+                        link.getPatient().getEmail(),
+                        link.getNextAppointmentAt(),
+                        link.getStatus()
+                ))
+                .sorted((a, b) -> a.nextAppointmentAt().compareTo(b.nextAppointmentAt()))
+                .collect(Collectors.toList());
     }
 }

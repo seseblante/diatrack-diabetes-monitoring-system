@@ -90,6 +90,17 @@ public class QuickMessageServiceImpl implements QuickMessageService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public long getUnreadCountForLink(UUID patientClinicianLinkId) {
+        User currentUser = authService.currentUser();
+        getLinkAndVerifyAccess(patientClinicianLinkId, currentUser);
+
+        return quickMessageRepository.countByPatientClinicianLinkIdAndStatus(
+                patientClinicianLinkId, "SENT"
+        );
+    }
+
     private PatientClinician getLinkAndVerifyAccess(UUID linkId, User user) {
         PatientClinician link = patientClinicianRepository.findById(linkId)
                 .orElseThrow(() -> new EntityNotFoundException("Patient-Clinician link not found: " + linkId));

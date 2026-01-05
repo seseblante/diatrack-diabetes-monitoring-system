@@ -13,4 +13,6 @@ public interface QuickMessageService {
     QuickMessageDto sendMessage(UUID patientClinicianLinkId, QuickMessageRequestDto request);
 
     List<QuickMessageDto> markMessagesAsRead(UUID patientClinicianLinkId);
+
+    long getUnreadCountForLink(UUID patientClinicianLinkId);
 }

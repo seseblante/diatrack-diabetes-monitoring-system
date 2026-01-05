@@ -1,5 +1,6 @@
 package app.hub_backend.service;
 
+import app.hub_backend.DTO.AppointmentDto;
 import app.hub_backend.DTO.PatientClinicianDto;
 import app.hub_backend.entities.PatientClinician;
 
@@ -14,4 +15,5 @@ public interface PatientClinicianService {
     List<PatientClinicianDto> getCliniciansForPatient(UUID patientId);
     List<PatientClinicianDto> getPatientsForClinician(UUID clinicianId);
     PatientClinicianDto updateNextAppointment(UUID linkId, OffsetDateTime nextAppointmentAt);
+    List<AppointmentDto> getAppointmentsForClinician(UUID clinicianId);
 }

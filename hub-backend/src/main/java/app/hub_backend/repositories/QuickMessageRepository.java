@@ -17,4 +17,9 @@ public interface QuickMessageRepository extends JpaRepository<QuickMessage, UUID
             @Param("patientClinicianLinkId") UUID patientClinicianLinkId,
             @Param("status") String status
     );
+
+    long countByPatientClinicianLinkIdAndStatus(
+            @Param("patientClinicianLinkId") UUID patientClinicianLinkId,
+            @Param("status") String status
+    );
 }

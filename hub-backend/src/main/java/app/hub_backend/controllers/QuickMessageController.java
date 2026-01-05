@@ -50,4 +50,12 @@ public class QuickMessageController {
 
         return ResponseEntity.ok(updatedMessages);
     }
+
+    @GetMapping("/link/{patientClinicianLinkId}/unread-count")
+    public ResponseEntity<Long> getUnreadCount(
+            @PathVariable("patientClinicianLinkId") UUID patientClinicianLinkId
+    ) {
+        long count = quickMessageService.getUnreadCountForLink(patientClinicianLinkId);
+        return ResponseEntity.ok(count);
+    }
 }

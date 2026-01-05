@@ -1,88 +1,86 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { ArrowLeft, Calendar, Clock, User, Phone, AlertCircle, X, Check } from 'lucide-react';
+import { getClinicianAppointments, updateNextAppointment, type Appointment } from '../api/clinician';
+import { getCurrentUser } from '../api/auth';
 
 interface ClinicianAppointmentsProps {
   onClose: () => void;
 }
 
 export function ClinicianAppointments({ onClose }: ClinicianAppointmentsProps) {
-  const [rescheduleAppointment, setRescheduleAppointment] = useState<any>(null);
+  const [rescheduleAppointment, setRescheduleAppointment] = useState<Appointment | null>(null);
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [rescheduledPatientName, setRescheduledPatientName] = useState('');
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const appointments = [
-    {
-      id: 1,
-      patientName: 'Arianne Acosta',
-      date: 'October 3, 2025',
-      time: '2:00 PM',
-      type: 'Follow-up Consultation',
-      status: 'urgent',
-      notes: 'Needs medication adjustment',
-      phone: '(555) 345-6789'
-    },
-    {
-      id: 2,
-      patientName: 'Sheianne Seblante',
-      date: 'October 5, 2025',
-      time: '3:30 PM',
-      type: 'Regular Check-up',
-      status: 'scheduled',
-      notes: 'Review recent glucose trends',
-      phone: '(555) 123-4567'
-    },
-    {
-      id: 3,
-      patientName: 'Jose Reyes',
-      date: 'October 12, 2025',
-      time: '10:00 AM',
-      type: 'Routine Follow-up',
-      status: 'scheduled',
-      notes: 'Quarterly review',
-      phone: '(555) 234-5678'
-    },
-    {
-      id: 4,
-      patientName: 'Joy Arellano',
-      date: 'October 15, 2025',
-      time: '4:00 PM',
-      type: 'Regular Check-up',
-      status: 'scheduled',
-      notes: 'Discuss exercise routine',
-      phone: '(555) 456-7890'
-    },
-  ];
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user?.id) {
+          const appointmentsData = await getClinicianAppointments(user.id);
+          setAppointments(appointmentsData);
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAppointments();
+  }, []);
 
   const getStatusBadge = (status: string) => {
-    if (status === 'urgent') {
+    if (status === 'URGENT') {
       return <Badge className="bg-red-500 text-white">Urgent</Badge>;
     }
     return <Badge className="bg-green-100 text-green-800">Scheduled</Badge>;
   };
 
-  const handleReschedule = (appointment: any) => {
-    setRescheduleAppointment(appointment);
-    setNewDate(appointment.date);
-    setNewTime(appointment.time);
+  const isUrgent = (appointmentDate: string) => {
+    const now = new Date();
+    const apptDate = new Date(appointmentDate);
+    const diffDays = Math.ceil((apptDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 3 && diffDays >= 0;
   };
 
-  const handleSaveReschedule = () => {
+  const handleReschedule = (appointment: Appointment) => {
+    setRescheduleAppointment(appointment);
+    const apptDate = new Date(appointment.nextAppointmentAt);
+    setNewDate(apptDate.toISOString().split('T')[0]);
+    setNewTime(apptDate.toTimeString().slice(0, 5));
+  };
+
+  const handleSaveReschedule = async () => {
     if (rescheduleAppointment && newDate && newTime) {
-      // Save patient name before clearing the appointment
-      setRescheduledPatientName(rescheduleAppointment.patientName);
-      
-      // Show success message that appointment was rescheduled and patient was notified
-      setRescheduleAppointment(null);
-      setNewDate('');
-      setNewTime('');
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 4000);
+      try {
+        const appointmentDateTime = new Date(`${newDate}T${newTime}:00`).toISOString();
+        await updateNextAppointment(rescheduleAppointment.id, appointmentDateTime);
+        
+        setAppointments(prev => prev.map(appt => 
+          appt.id === rescheduleAppointment.id 
+            ? { ...appt, nextAppointmentAt: appointmentDateTime }
+            : appt
+        ));
+        
+        setRescheduledPatientName(rescheduleAppointment.patientName);
+        setRescheduleAppointment(null);
+        setNewDate('');
+        setNewTime('');
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 4000);
+      } catch (error) {
+        console.error('Error rescheduling appointment:', error);
+        alert('Failed to reschedule appointment');
+      }
     }
   };
 
@@ -123,29 +121,48 @@ export function ClinicianAppointments({ onClose }: ClinicianAppointmentsProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading appointments...</p>
+            </div>
+          </div>
+        ) : appointments.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg">No appointments scheduled</p>
+              <p className="text-gray-500 text-sm mt-2">Appointments will appear here once scheduled</p>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4 max-w-[375px] mx-auto">
-          {appointments.map((appointment) => (
+          {appointments.map((appointment) => {
+            const appointmentDate = new Date(appointment.nextAppointmentAt);
+            const isAppointmentUrgent = isUrgent(appointment.nextAppointmentAt);
+            return (
             <Card 
               key={appointment.id} 
               className={`shadow-lg ${
-                appointment.status === 'urgent' 
+                isAppointmentUrgent
                   ? 'border-2 border-red-300 bg-gradient-to-r from-red-50 to-rose-50' 
                   : 'border-2 border-blue-200'
               }`}
             >
               <CardHeader className={
-                appointment.status === 'urgent'
+                isAppointmentUrgent
                   ? 'bg-gradient-to-r from-red-100 to-rose-100'
                   : 'bg-gradient-to-r from-blue-50 to-cyan-50'
               }>
                 <div className="flex items-start justify-between">
                   <CardTitle className="flex items-center space-x-2">
                     <User className={`w-5 h-5 ${
-                      appointment.status === 'urgent' ? 'text-red-600' : 'text-blue-600'
+                      isAppointmentUrgent ? 'text-red-600' : 'text-blue-600'
                     }`} />
                     <span className="text-lg">{appointment.patientName}</span>
                   </CardTitle>
-                  {getStatusBadge(appointment.status)}
+                  {getStatusBadge(isAppointmentUrgent ? 'URGENT' : appointment.status)}
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
@@ -155,36 +172,31 @@ export function ClinicianAppointments({ onClose }: ClinicianAppointmentsProps) {
                     <Calendar className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{appointment.date}</p>
+                    <p className="font-semibold text-gray-900">
+                      {appointmentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
                     <p className="text-sm text-gray-600 flex items-center">
                       <Clock className="w-4 h-4 mr-1" />
-                      {appointment.time}
+                      {appointmentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                     </p>
                   </div>
                 </div>
 
-                {/* Appointment Type */}
+                {/* Patient Contact */}
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
-                  <p className="text-sm text-gray-500">Appointment Type</p>
-                  <p className="font-medium text-gray-900">{appointment.type}</p>
+                  <p className="text-sm text-gray-500">Patient Contact</p>
+                  <p className="font-medium text-gray-900">{appointment.patientPhone || 'N/A'}</p>
+                  <p className="text-sm text-gray-600">{appointment.patientEmail || 'N/A'}</p>
                 </div>
 
-                {/* Notes */}
-                {appointment.notes && (
-                  <div className={`p-3 rounded-xl border ${
-                    appointment.status === 'urgent'
-                      ? 'bg-red-50 border-red-200'
-                      : 'bg-blue-50 border-blue-200'
-                  }`}>
+                {/* Urgency Warning */}
+                {isAppointmentUrgent && (
+                  <div className="p-3 rounded-xl border bg-red-50 border-red-200">
                     <div className="flex items-start space-x-2">
-                      {appointment.status === 'urgent' && (
-                        <AlertCircle className="w-4 h-4 text-red-600 mt-0.5" />
-                      )}
+                      <AlertCircle className="w-4 h-4 text-red-600 mt-0.5" />
                       <div>
-                        <p className="text-sm text-gray-500">Notes</p>
-                        <p className={`font-medium ${
-                          appointment.status === 'urgent' ? 'text-red-700' : 'text-gray-900'
-                        }`}>{appointment.notes}</p>
+                        <p className="text-sm text-gray-500">Status</p>
+                        <p className="font-medium text-red-700">Upcoming appointment within 3 days</p>
                       </div>
                     </div>
                   </div>
@@ -195,6 +207,11 @@ export function ClinicianAppointments({ onClose }: ClinicianAppointmentsProps) {
                   <Button 
                     variant="outline" 
                     className="flex-1 h-11 border-2 hover:bg-green-50 hover:border-green-300"
+                    onClick={() => {
+                      if (appointment.patientPhone) {
+                        window.location.href = `tel:${appointment.patientPhone}`;
+                      }
+                    }}
                   >
                     <Phone className="w-4 h-4 mr-2 text-green-600" />
                     Call
@@ -210,8 +227,9 @@ export function ClinicianAppointments({ onClose }: ClinicianAppointmentsProps) {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );})}
         </div>
+        )}
       </div>
 
       {/* Reschedule Modal */}

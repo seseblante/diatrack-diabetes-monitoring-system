@@ -77,6 +77,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
   const [medicationPatient, setMedicationPatient] = useState<PatientData | null>(null);
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [patientNotes, setPatientNotes] = useState<Record<string, string>>({});
   const [isEditingAppointment, setIsEditingAppointment] = useState(false);
@@ -428,7 +429,8 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                               setIsEditingAppointment(false);
                             } catch (error) {
                               console.error('Error updating appointment:', error);
-                              alert('Failed to update appointment');
+                              setAlertMessage({ type: 'error', message: 'Failed to update appointment' });
+                              setTimeout(() => setAlertMessage(null), 3000);
                             }
                           }}
                           className="flex-1"
@@ -575,10 +577,12 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                   if (selectedPatient) {
                     try {
                       await downloadPatientReportPdf(selectedPatient.patientId, `${selectedPatient.patientName}_report.pdf`);
-                      alert('Report downloaded successfully!');
+                      setAlertMessage({ type: 'success', message: 'Report downloaded successfully!' });
+                      setTimeout(() => setAlertMessage(null), 3000);
                     } catch (error) {
                       console.error('Error downloading report:', error);
-                      alert('Failed to export report. Please check the console for details.');
+                      setAlertMessage({ type: 'error', message: 'Failed to export report. Please check the console for details.' });
+                      setTimeout(() => setAlertMessage(null), 3000);
                     }
                   }
                 }}
@@ -709,6 +713,21 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
 
   return (
     <div className="h-full bg-gray-50 flex flex-col overflow-hidden pt-11">
+      {/* Alert Toast at Top */}
+      {alertMessage && (
+        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-2xl flex items-center space-x-3 animate-in fade-in slide-in-from-top-2 duration-300 ${
+          alertMessage.type === 'success' 
+            ? 'bg-green-600 text-white' 
+            : 'bg-red-600 text-white'
+        }`}>
+          {alertMessage.type === 'success' ? (
+            <CheckCircle className="w-5 h-5" />
+          ) : (
+            <AlertTriangle className="w-5 h-5" />
+          )}
+          <span className="font-medium">{alertMessage.message}</span>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-white shadow-sm border-b px-4 py-4 flex-shrink-0">
         <div>
@@ -722,13 +741,9 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 onClick={() => setShowMessaging(true)}
                 variant="outline" 
                 size="sm"
-                className="relative"
               >
                 <MessageSquare className="w-4 h-4 mr-1" />
                 Messages
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
-                  3
-                </Badge>
               </Button>
               <Button onClick={onLogout} variant="outline" size="sm">
                 Sign Out

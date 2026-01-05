@@ -96,13 +96,13 @@ public class PatientServiceImpl implements PatientService {
             user.setPhone(updateRequest.phone());
         }
         user.setUpdatedAt(OffsetDateTime.now());
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
         
         // Update or create UserProfile
         UserProfile profile = userProfileRepository.findById(patientId)
                 .orElseGet(() -> {
                     UserProfile newProfile = new UserProfile();
-                    newProfile.setUser(user);
+                    newProfile.setUser(savedUser);
                     newProfile.setCreatedAt(OffsetDateTime.now());
                     return newProfile;
                 });
@@ -119,6 +119,6 @@ public class PatientServiceImpl implements PatientService {
         profile.setUpdatedAt(OffsetDateTime.now());
         userProfileRepository.save(profile);
         
-        return UserMapper.toPatientDetailDto(user, profile);
+        return UserMapper.toPatientDetailDto(savedUser, profile);
     }
 }
