@@ -1,0 +1,35 @@
+@startuml
+scale 600 width
+
+[*] --> Sent : Clinician sends message
+
+state Sent {
+  [*] --> Stored
+  state Stored {
+   Status : SENT
+   Timestamp : CreatedAt
+  }
+}
+
+state Read {
+  [*] --> Updated
+  state Updated {
+   Status : READ
+   Timestamp : ReadAt
+  }
+}
+
+Sent --> Read : Patient views message \n[markMessagesAsRead()]
+Read --> [*] : Final State
+
+note right of Sent
+  Condition: Only Clinician
+  can trigger creation.
+end note
+
+note right of Read
+  Condition: Only Patient
+  can trigger update.
+end note
+
+@enduml
