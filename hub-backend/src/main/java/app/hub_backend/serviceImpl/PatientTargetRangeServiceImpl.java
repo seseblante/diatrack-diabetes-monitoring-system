@@ -58,6 +58,9 @@ public class PatientTargetRangeServiceImpl implements PatientTargetRangeService 
     @Transactional
     public void createDefaultTargetsForNewPatient(User patient) {
 
+        User patientRef = new User();
+        patientRef.setId(patient.getId());
+
         // [FIXED] Using UPPER_CASE constants to match your enum
         List<DefaultRange> defaults = Arrays.asList(
                 new DefaultRange(GlucoseContext.FASTING, new BigDecimal("71.00"), new BigDecimal("99.00")),
@@ -69,7 +72,7 @@ public class PatientTargetRangeServiceImpl implements PatientTargetRangeService 
 
         List<PatientTargetRange> newRanges = defaults.stream()
                 .map(def -> PatientTargetRange.builder()
-                        .patient(patient)
+                        .patient(patientRef)
                         .context(def.context)
                         .targetLowMgdl(def.low)
                         .targetHighMgdl(def.high)

@@ -122,9 +122,12 @@ public class AuthServiceImpl implements AuthService {
         if ("PATIENT".equals(savedUser.getRole())) {
             patientTargetRangeService.createDefaultTargetsForNewPatient(savedUser);
             
+            User patientRef = new User();
+            patientRef.setId(savedUser.getId());
+            
             // Create default patient settings to prevent EntityNotFoundException
             PatientSettings settings = PatientSettings.builder()
-                    .patient(savedUser)
+                    .patient(patientRef)
                     .severeLowMgdl(new java.math.BigDecimal("70.00"))
                     .severeHighMgdl(new java.math.BigDecimal("180.00"))
                     .trendWindowDays(7)
