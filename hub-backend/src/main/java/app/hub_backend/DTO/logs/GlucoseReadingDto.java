@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public record GlucoseReadingDto(
         UUID id,
-        UUID patientId, // This field was missing
+        UUID patientId, 
         OffsetDateTime measuredAt,
         OffsetDateTime lastMealAt,
         BigDecimal valueMgdl,
