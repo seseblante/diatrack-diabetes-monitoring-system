@@ -5,14 +5,17 @@ import { Input } from './ui/input';
 import { ArrowLeft, UserPlus, Stethoscope, User as UserIcon } from 'lucide-react';
 import logoImage from '../assets/logoImage.png';
 import { register as apiRegister } from '../api/auth';
+import { DataPrivacyConsent } from './DataPrivacyConsent';
 
 interface RegistrationProps {
   onBack: () => void;
 }
 
 type UserRole = 'PATIENT' | 'CLINICIAN';
+type RegistrationStep = 'privacy' | 'role' | 'form';
 
 export function Registration({ onBack }: RegistrationProps) {
+  const [step, setStep] = useState<RegistrationStep>('privacy');
   const [role, setRole] = useState<UserRole | null>(null);
   const [formData, setFormData] = useState({
     email: '',
@@ -76,7 +79,18 @@ export function Registration({ onBack }: RegistrationProps) {
     }
   };
 
-  if (!role) {
+  // Show privacy consent first
+  if (step === 'privacy') {
+    return (
+      <DataPrivacyConsent
+        onBack={onBack}
+        onAgree={() => setStep('role')}
+      />
+    );
+  }
+
+  // Show role selection after privacy consent
+  if (step === 'role') {
     return (
       <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col items-center justify-center p-4 overflow-y-auto">
         <div className="w-full max-w-md">
@@ -91,7 +105,10 @@ export function Registration({ onBack }: RegistrationProps) {
           <div className="space-y-4">
             <Card 
               className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-blue-400"
-              onClick={() => setRole('PATIENT')}
+              onClick={() => {
+                setRole('PATIENT');
+                setStep('form');
+              }}
             >
               <CardContent className="pt-6 pb-6">
                 <div className="flex items-center space-x-4">
@@ -108,7 +125,10 @@ export function Registration({ onBack }: RegistrationProps) {
 
             <Card 
               className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-purple-400"
-              onClick={() => setRole('CLINICIAN')}
+              onClick={() => {
+                setRole('CLINICIAN');
+                setStep('form');
+              }}
             >
               <CardContent className="pt-6 pb-6">
                 <div className="flex items-center space-x-4">
@@ -125,12 +145,12 @@ export function Registration({ onBack }: RegistrationProps) {
           </div>
 
           <Button
-            onClick={onBack}
+            onClick={() => setStep('privacy')}
             variant="ghost"
             className="w-full mt-6"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Login
+            Back
           </Button>
         </div>
       </div>
@@ -276,7 +296,10 @@ export function Registration({ onBack }: RegistrationProps) {
               <div className="flex space-x-3 pt-4">
                 <Button
                   type="button"
-                  onClick={() => setRole(null)}
+                  onClick={() => {
+                    setRole(null);
+                    setStep('role');
+                  }}
                   variant="outline"
                   className="flex-1 h-12"
                   disabled={isLoading}

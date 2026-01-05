@@ -10,6 +10,7 @@ import { ClinicSettings } from './ClinicSettings';
 import { ClinicianAppointments } from './ClinicianAppointments';
 import { ClinicianMedicationManagement } from './ClinicianMedicationManagement';
 import { PatientLinkManagement } from './PatientLinkManagement';
+import { DataPrivacyPage } from './DataPrivacyPage';
 import { getCurrentUser } from '../api/auth';
 import { getClinicianPatients, getClinicianNotes, createClinicianNote, updateNextAppointment, type PatientClinicianLink, type ClinicianNote } from '../api/clinician';
 import { getGlucoseReadings, type GlucoseReading } from '../api/glucose';
@@ -40,7 +41,8 @@ import {
   Pill,
   UserPlus,
   Stethoscope,
-  Edit
+  Edit,
+  Shield
 } from 'lucide-react';
 
 interface ClinicianDashboardProps {
@@ -71,6 +73,7 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
   const [showAppointments, setShowAppointments] = useState(false);
   const [showMedicationManagement, setShowMedicationManagement] = useState(false);
   const [showPatientLinkManagement, setShowPatientLinkManagement] = useState(false);
+  const [showDataPrivacy, setShowDataPrivacy] = useState(false);
   const [medicationPatient, setMedicationPatient] = useState<PatientData | null>(null);
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -680,6 +683,11 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
     return <ClinicSettings onClose={() => setShowClinicSettings(false)} />;
   }
 
+  // If data privacy is open, show it fullscreen
+  if (showDataPrivacy) {
+    return <DataPrivacyPage onClose={() => setShowDataPrivacy(false)} />;
+  }
+
   // If appointments is open, show it fullscreen
   if (showAppointments) {
     return <ClinicianAppointments onClose={() => setShowAppointments(false)} />;
@@ -887,6 +895,26 @@ export function ClinicianDashboard({ onLogout }: ClinicianDashboardProps) {
                 <span className="font-medium text-center text-sm">Clinic<br/>Settings</span>
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Privacy & Legal */}
+        <Card className="mt-6 shadow-lg">
+          <CardHeader>
+            <CardTitle>Privacy & Legal</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full h-16 justify-start text-left rounded-xl"
+              onClick={() => setShowDataPrivacy(true)}
+            >
+              <Shield className="w-6 h-6 mr-4 text-indigo-600" />
+              <div>
+                <div className="font-medium">Data Privacy Notice</div>
+                <div className="text-sm text-gray-500">View privacy policy</div>
+              </div>
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -8,6 +8,7 @@ import { PatientMessaging } from './PatientMessaging';
 import { PatientClinicSchedule } from './PatientClinicSchedule';
 import { PatientMedicalProfile } from './PatientMedicalProfile';
 import { EducationalResources } from './EducationalResources';
+import { DataPrivacyPage } from './DataPrivacyPage';
 import logoImage from '../assets/logoImage.png';
 import { getCurrentUser } from '../api/auth';
 import { getGlucoseReadings, logGlucoseReading, GlucoseReading, GlucoseContextType } from '../api/glucose';
@@ -42,7 +43,8 @@ import {
   Menu as MenuIcon,
   FileText,
   MessageSquare,
-  MapPin
+  MapPin,
+  Shield
 } from 'lucide-react';
 
 interface PatientDashboardProps {
@@ -537,6 +539,7 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   const [showMessaging, setShowMessaging] = useState(false);
   const [showClinicSchedule, setShowClinicSchedule] = useState(false);
   const [showEducationalResources, setShowEducationalResources] = useState(false);
+  const [showDataPrivacy, setShowDataPrivacy] = useState(false);
   const [glucoseValue, setGlucoseValue] = useState('');
   const [glucoseContext, setGlucoseContext] = useState<GlucoseContextType>('Fasting');
   const [mealDescription, setMealDescription] = useState('');
@@ -1706,6 +1709,25 @@ Taken
 
       <Card className="shadow-lg">
         <CardHeader>
+          <CardTitle>Privacy & Legal</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button 
+            variant="outline" 
+            className="w-full h-16 justify-start text-left rounded-xl"
+            onClick={() => setShowDataPrivacy(true)}
+          >
+            <Shield className="w-6 h-6 mr-4 text-indigo-600" />
+            <div>
+              <div className="font-medium">Data Privacy Notice</div>
+              <div className="text-sm text-gray-500">View privacy policy</div>
+            </div>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg">
+        <CardHeader>
           <CardTitle>Settings & Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -1787,6 +1809,11 @@ Taken
   // If educational resources is open, show it fullscreen
   if (showEducationalResources) {
     return <EducationalResources onClose={() => setShowEducationalResources(false)} />;
+  }
+
+  // If data privacy is open, show it fullscreen
+  if (showDataPrivacy) {
+    return <DataPrivacyPage onClose={() => setShowDataPrivacy(false)} />;
   }
 
   return (
