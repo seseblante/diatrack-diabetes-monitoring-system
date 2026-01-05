@@ -1659,7 +1659,7 @@ Taken
             <User className="w-10 h-10 text-white" />
           </div>
           <h2 className="text-2xl font-semibold">{currentUser?.fullName || 'User'}</h2>
-          <p className="text-gray-600">Managing diabetes since 2018</p>
+          <p className="text-gray-600">Managing diabetes since 2026</p>
           <Badge className="mt-2 bg-green-100 text-green-800">On track this week</Badge>
         </div>
         <Button
