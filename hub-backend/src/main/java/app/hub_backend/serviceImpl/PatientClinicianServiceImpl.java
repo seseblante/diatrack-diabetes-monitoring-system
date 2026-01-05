@@ -78,7 +78,7 @@ public class PatientClinicianServiceImpl implements PatientClinicianService {
                 .map(link -> new AppointmentDto(
                         link.getId(),
                         link.getPatient().getId(),
-                        link.getPatient().getName(),
+                        link.getPatient().getFullName(),
                         link.getPatient().getPhone(),
                         link.getPatient().getEmail(),
                         link.getNextAppointmentAt(),
