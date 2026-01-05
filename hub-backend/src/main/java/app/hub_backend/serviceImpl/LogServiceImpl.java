@@ -64,7 +64,6 @@ public class LogServiceImpl implements LogService {
                 .patient(patientRef)
                 .occurredAt(request.occurredAt())
                 .symptom(request.symptom())
-                .severity(request.severity())
                 .notes(request.notes())
                 .createdBy(currentUser)
                 .createdAt(OffsetDateTime.now())

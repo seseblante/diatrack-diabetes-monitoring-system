@@ -496,7 +496,6 @@ public class PdfReportGenerator {
     private String formatSymptomNote(SymptomNote s) {
         return s.getOccurredAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")) +
                 " • " + s.getSymptom() +
-                " [" + s.getSeverity() + "]" +
                 (s.getNotes() != null ? " — " + s.getNotes() : "");
     }
 

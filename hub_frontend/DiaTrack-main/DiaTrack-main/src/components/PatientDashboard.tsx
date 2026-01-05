@@ -106,8 +106,6 @@ interface QuickLogModalProps {
   setMealTime: (value: string) => void;
   symptomDescription: string;
   setSymptomDescription: (value: string) => void;
-  symptomSeverity: string;
-  setSymptomSeverity: (value: string) => void;
   symptomNotesInput: string;
   setSymptomNotesInput: (value: string) => void;
   medicationRegimens: MedicationRegimen[];
@@ -137,8 +135,6 @@ function QuickLogModal({
   setMealTime,
   symptomDescription,
   setSymptomDescription,
-  symptomSeverity,
-  setSymptomSeverity,
   symptomNotesInput,
   setSymptomNotesInput,
   medicationRegimens,
@@ -448,19 +444,6 @@ function QuickLogModal({
                   </div>
                   
                   <div>
-                    <label className="block font-semibold mb-3 text-gray-800">Severity</label>
-                    <select 
-                      className="w-full h-12 p-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-300 focus:border-orange-500 bg-white shadow-lg"
-                      value={symptomSeverity}
-                      onChange={(e) => setSymptomSeverity(e.target.value)}
-                    >
-                      <option value="Mild">Mild</option>
-                      <option value="Moderate">Moderate</option>
-                      <option value="Severe">Severe</option>
-                    </select>
-                  </div>
-                  
-                  <div>
                     <label className="block font-semibold mb-3 text-gray-800">Additional Notes (Optional)</label>
                     <textarea 
                       placeholder="Any additional details..."
@@ -546,7 +529,6 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
   const [carbsValue, setCarbsValue] = useState('');
   const [mealTime, setMealTime] = useState('');
   const [symptomDescription, setSymptomDescription] = useState('');
-  const [symptomSeverity, setSymptomSeverity] = useState('Mild');
   const [symptomNotesInput, setSymptomNotesInput] = useState('');
   
   // Backend data state
@@ -976,7 +958,6 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
     try {
       await logSymptom(currentUser.id, {
         symptom: symptomDescription,
-        severity: symptomSeverity,
         notes: symptomNotesInput || undefined,
         occurredAt: new Date().toISOString()
       });
@@ -989,7 +970,6 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
       
       // Reset form
       setSymptomDescription('');
-      setSymptomSeverity('Mild');
       setSymptomNotesInput('');
       
       // Refetch data to get updated list
@@ -1895,8 +1875,6 @@ Taken
         setMealTime={setMealTime}
         symptomDescription={symptomDescription}
         setSymptomDescription={setSymptomDescription}
-        symptomSeverity={symptomSeverity}
-        setSymptomSeverity={setSymptomSeverity}
         symptomNotesInput={symptomNotesInput}
         setSymptomNotesInput={setSymptomNotesInput}
         medicationRegimens={medicationRegimens}

@@ -24,8 +24,6 @@ public class SymptomNote {
     @Column(nullable = false)
     private String symptom;
 
-    private String severity;
-
     private String notes;
 
     @ManyToOne(fetch = FetchType.LAZY)

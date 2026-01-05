@@ -18,7 +18,6 @@ public final class LogRequestDto {
     public record SymptomLog(
             @NotNull OffsetDateTime occurredAt,
             @NotBlank String symptom,
-            String severity,
             String notes
     ) {}
 

@@ -4,7 +4,6 @@ export interface SymptomNote {
   id: string;
   patientId: string;
   symptom: string;
-  severity: string;
   notes?: string;
   occurredAt: string;
   createdAt: string;
@@ -12,7 +11,6 @@ export interface SymptomNote {
 
 export interface SymptomLogRequest {
   symptom: string;
-  severity: string;
   notes?: string;
   occurredAt?: string;
 }

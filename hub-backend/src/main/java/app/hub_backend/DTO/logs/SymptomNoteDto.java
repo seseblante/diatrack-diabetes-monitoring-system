@@ -8,6 +8,5 @@ public record SymptomNoteDto(
         UUID patientId,
         OffsetDateTime occurredAt,
         String symptom,
-        String severity,
         String notes
 ) {}
