@@ -1306,12 +1306,20 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
       
       const recentReadings = glucoseReadings.filter(r => new Date(r.measuredAt) >= sevenDaysAgo);
       const recentMeals = meals.filter(m => new Date(m.loggedAt) >= sevenDaysAgo);
+      const recentMedicationLogs = medicationLogs.filter(log => new Date(log.takenAt) >= sevenDaysAgo);
       const values = recentReadings.map(r => Number(r.valueMgdl));
       
       const avg = values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
       const inRange = values.length > 0 ? Math.round((values.filter(v => v >= 70 && v <= 180).length / values.length) * 100) : 0;
       const lowEvents = values.filter(v => v < 70).length;
       const highEvents = values.filter(v => v > 180).length;
+      
+      // Calculate medication adherence
+      const expectedDoses = medicationRegimens.reduce((total, regimen) => {
+        return total + (regimen.timesOfDay.length * 7); // 7 days
+      }, 0);
+      const takenDoses = recentMedicationLogs.length;
+      const medicationStatus = expectedDoses > 0 ? (takenDoses / expectedDoses >= 0.8 ? 'good' : 'warning') : 'good';
       
       // Determine status based on TIR and high events
       const getOverallStatus = () => {
@@ -1326,10 +1334,10 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
         { metric: 'Low Events', value: `${lowEvents}`, status: lowEvents > 0 ? 'warning' : 'good' },
         { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'danger' : 'good' },
         { metric: 'Meals Logged', value: `${recentMeals.length}`, status: 'good' },
-        { metric: 'Medications Taken', value: '0 / 0', status: 'good' }, // TODO: Connect medication API
+        { metric: 'Medications Taken', value: `${takenDoses} / ${expectedDoses}`, status: medicationStatus },
         { metric: 'Readings Logged', value: `${recentReadings.length}`, status: 'good' }
       ];
-    }, [glucoseReadings, meals]);
+    }, [glucoseReadings, meals, medicationRegimens, medicationLogs]);
 
     const thirtyDaySummary = useMemo(() => {
       const thirtyDaysAgo = new Date();
@@ -1337,12 +1345,20 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
       
       const recentReadings = glucoseReadings.filter(r => new Date(r.measuredAt) >= thirtyDaysAgo);
       const recentMeals = meals.filter(m => new Date(m.loggedAt) >= thirtyDaysAgo);
+      const recentMedicationLogs = medicationLogs.filter(log => new Date(log.takenAt) >= thirtyDaysAgo);
       const values = recentReadings.map(r => Number(r.valueMgdl));
       
       const avg = values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
       const inRange = values.length > 0 ? Math.round((values.filter(v => v >= 70 && v <= 180).length / values.length) * 100) : 0;
       const lowEvents = values.filter(v => v < 70).length;
       const highEvents = values.filter(v => v > 180).length;
+      
+      // Calculate medication adherence
+      const expectedDoses = medicationRegimens.reduce((total, regimen) => {
+        return total + (regimen.timesOfDay.length * 30); // 30 days
+      }, 0);
+      const takenDoses = recentMedicationLogs.length;
+      const medicationStatus = expectedDoses > 0 ? (takenDoses / expectedDoses >= 0.8 ? 'good' : 'warning') : 'good';
       
       // Determine status based on TIR and high events
       const getOverallStatus = () => {
@@ -1357,10 +1373,10 @@ export function PatientDashboard({ onLogout }: PatientDashboardProps) {
         { metric: 'Low Events', value: `${lowEvents}`, status: lowEvents > 0 ? 'warning' : 'good' },
         { metric: 'High Events', value: `${highEvents}`, status: highEvents > 0 ? 'danger' : 'good' },
         { metric: 'Meals Logged', value: `${recentMeals.length}`, status: 'good' },
-        { metric: 'Medications Taken', value: '0 / 0', status: 'good' }, // TODO: Connect medication API
+        { metric: 'Medications Taken', value: `${takenDoses} / ${expectedDoses}`, status: medicationStatus },
         { metric: 'Readings Logged', value: `${recentReadings.length}`, status: 'good' }
       ];
-    }, [glucoseReadings, meals]);
+    }, [glucoseReadings, meals, medicationRegimens, medicationLogs]);
 
     const getRowColor = (status: string) => {
       switch (status) {
