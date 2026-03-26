@@ -4,7 +4,7 @@ A client-facing mHealth web application for bridging the gap between patients an
 
 **[Live Demo](https://diatrack-diabetes-monitoring-system.vercel.app)**
 
-> **Note:** The backend is hosted on a free tier and may take up to a minute to wake up on the first load.
+> **Note:** The backend is hosted on a free tier and cannot be tested immediately since I do not handle the Render account that this is hosted on. For immediate testing, you may check out the [documentation](https://drive.google.com/drive/folders/11pZ0Q13AbWc55EyXlhlpKEvgr5c8kGr8?usp=sharing).
 
 ## Test Credentials
 
