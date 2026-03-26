@@ -1,12 +1,12 @@
-## ===============================
-## LOCAL DEVELOPMENT CONFIGURATION
-## ===============================
-## To develop locally, copy the contents of application.properties.example
-## into a new file named application-local.properties, fill in your values,
-## and run with: --spring.profiles.active=local
-## OR set the environment variables listed below and run normally.
+## ============================================================
+## application.properties.example
+## ============================================================
+## Copy this file to application-local.properties (gitignored)
+## and fill in real values, OR export the variables below as
+## environment variables before starting the app.
 ##
-## See: application.properties.example for all required keys.
+## NEVER commit real credentials to version control.
+## ============================================================
 
 # ===============================
 # Application
@@ -14,12 +14,16 @@
 spring.application.name=hub-backend
 
 # ===============================
-# Server (REQUIRED FOR RENDER)
+# Server
 # ===============================
 server.port=${PORT:8080}
 
 # ===============================
 # Database
+# -- Set these environment variables --
+# DB_URL      e.g. jdbc:postgresql://localhost:5432/HUB-DB
+# DB_USERNAME e.g. postgres
+# DB_PASSWORD e.g. yourpassword
 # ===============================
 spring.datasource.url=${DB_URL}
 spring.datasource.username=${DB_USERNAME}
@@ -36,13 +40,19 @@ spring.jpa.open-in-view=false
 
 # ===============================
 # Security
+# -- Set these environment variables --
+# JWT_SECRET_KEY              A Base64-encoded random secret ≥ 256 bits
+#                             Generate with: openssl rand -base64 32
+# SPRING_SECURITY_USER_NAME   (optional, default: admin)
+# SPRING_SECURITY_USER_PASSWORD  A strong password for the Spring actuator user
 # ===============================
 application.security.jwt.secret-key=${JWT_SECRET_KEY}
-
 spring.security.user.name=${SPRING_SECURITY_USER_NAME:admin}
 spring.security.user.password=${SPRING_SECURITY_USER_PASSWORD}
 
 # ===============================
 # CORS
+# -- Set CORS_ALLOWED_ORIGINS to your frontend URL(s) --
+# e.g. http://localhost:5173 or https://your-app.vercel.app
 # ===============================
 app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:5173}

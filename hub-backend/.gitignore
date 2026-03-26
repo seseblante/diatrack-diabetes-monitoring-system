@@ -34,3 +34,17 @@ build/
 
 ### MacOS ###
 .DS_Store
+
+### Security: Never commit real credentials ###
+# Local override (copy of application.properties.example with real values)
+**/application-local.properties
+**/application-dev.properties
+# Environment variable files
+.env
+.env.*
+!.env.example
+# Generated secrets or cert files
+*.pem
+*.key
+*.jks
+*.p12
