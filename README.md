@@ -6,6 +6,8 @@ A client-facing mHealth web application for bridging the gap between patients an
 
 > **Note:** The backend is hosted on a free tier and cannot be tested immediately since I do not handle the Render account that this is hosted on. For immediate testing, you may check out the [documentation](https://drive.google.com/drive/folders/11pZ0Q13AbWc55EyXlhlpKEvgr5c8kGr8?usp=sharing).
 
+<img width="1920" height="1080" alt="diatrack" src="https://github.com/user-attachments/assets/81a3b898-b498-494c-8a20-7efd7ea4722f" />
+
 ## Test Credentials
 
 | Role | Email | Password |
